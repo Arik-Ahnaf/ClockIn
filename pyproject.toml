@@ -1,0 +1,15 @@
+[project]
+name = "clockin"
+version = "0.1.0"
+description = "Figma-based PySide6 desktop timers with floating utility windows"
+readme = "README.md"
+authors = [
+    { name = "Arik-Ahnaf", email = "hyperog44@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "pyside6>=6.11.2",
+]
+
+[tool.uv]
+package = false
