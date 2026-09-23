@@ -16,6 +16,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+from tempfile import TemporaryDirectory
 import time
 import traceback
 
@@ -29,6 +30,7 @@ from PySide6.QtWidgets import QApplication, QWidget
 
 from models import TimerState
 from utils.design import ASSETS, FLOAT_TEXT, MUTED, SURFACE, font
+from utils.timer_store import TimerRecord, TimerStore
 from windows.floating_timer_window import VisualState
 from windows.setter_window import SetterWindow
 from native_x11 import NativeX11
@@ -72,6 +74,7 @@ class Validation:
         self.native = NativeX11()
         self.original_pointer = QCursor.pos().toTuple()
         self.setter: SetterWindow | None = None
+        self.database_directory = TemporaryDirectory(prefix="clockin-native-")
         self.other_process: subprocess.Popen | None = None
         self.results: list[dict] = []
         self.evidence: dict = {
@@ -122,7 +125,9 @@ class Validation:
                    "Desktop has room for isolated test-owned windows", available.getRect())
         base = available.topLeft() + QPoint(50, 50)
         blank = base + QPoint(10, 450)
-        self.setter = SetterWindow()
+        store = TimerStore(Path(self.database_directory.name) / "timers.json")
+        store.save([TimerRecord(f"native-test-{index}", 300) for index in range(3)])
+        self.setter = SetterWindow(store)
         self.setter.move(base)
         self.setter.show()
         self.wait(180)
@@ -350,6 +355,7 @@ class Validation:
                 self.other_process.wait(timeout=5)
         if self.setter is not None:
             self.setter.close()
+        self.database_directory.cleanup()
         self.native.move(*self.original_pointer)
         self.wait(80)
         self.native.close()

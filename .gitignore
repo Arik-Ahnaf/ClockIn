@@ -9,6 +9,10 @@ wheels/
 # Virtual environments
 .venv
 
+# Local timer database and temporary atomic writes
+/timers.json
+/.timers.json.*.tmp
+
 # Local design sources and agent instructions
 Codex\ References
 AGENTS.md

@@ -36,10 +36,11 @@ class TimerModel(QObject):
         parent: QObject | None = None,
         *,
         clock: Callable[[], float] = monotonic,
+        timer_id: str | None = None,
     ) -> None:
         super().__init__(parent)
         self._validate_duration(duration_seconds)
-        self.timer_id = uuid4().hex
+        self.timer_id = timer_id if timer_id is not None else uuid4().hex
         self._duration_seconds = duration_seconds
         self._remaining_seconds = float(duration_seconds)
         self._state = TimerState.IDLE

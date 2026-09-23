@@ -24,7 +24,8 @@ if needed. Windows and macOS use Qt's native default backend.
 
 ## Use
 
-- The setter initially contains the three five-minute timers shown in the design.
+- The setter loads its timers from `timers.json` every time the app starts.
+  First launch creates an empty database; add your own timers with the add button.
 - The bottom **add** button, **Settings → New timer**, or **Ctrl+N**, opens a
   separate, non-modal parameter setter window with native window controls. Hours are
   0–99; minutes and seconds are 0–59. A duration must be at least one second.
@@ -46,8 +47,29 @@ if needed. Windows and macOS use Qt's native default backend.
 - Hiding/closing a floating window leaves its countdown running. Deleting a timer
   stops only that timer. Closing the setter closes the application.
 
-Timer configuration is session-only. No network, account, or storage service is
-used by the application.
+Timer additions, duration changes, and deletions are saved immediately to
+`timers.json` beside `main.py`, independent of the working directory used to launch
+the app. Timer IDs and display order survive restarts. Saved timers reopen idle
+at their configured duration; in-progress countdowns and floating positions are
+not restored. The database is local and ignored by Git.
+
+The file has this structure (durations are whole seconds):
+
+```json
+{
+  "version": 1,
+  "timers": [
+    {"timer_id": "my-timer", "duration_seconds": 300}
+  ]
+}
+```
+
+The initial file contains an empty `timers` list. Each ID must be unique and
+non-empty; durations range from 1 to 359999 seconds. You can edit the file while
+ClockIn is closed, then relaunch to load your changes. Invalid or unreadable
+databases show an error and are left intact. Saves replace the file atomically;
+if saving fails, the requested add/edit/delete is not applied. Countdown refreshes
+do not write to disk. No network, account, or storage service is used.
 
 ## Design and assets
 
@@ -97,6 +119,8 @@ ClockIn/
   monotonic deadline. Published snapshots keep the two displays synchronized.
 - `controllers/timer_controller.py`: a 50 ms `QTimer` refreshes the model only
   while running. Refresh frequency never determines elapsed time.
+- `utils/timer_store.py`: validates timer definitions and reads/writes the local
+  JSON database using atomic replacement.
 - `windows/setter_window.py`: owns models/controllers, cards, and floating windows
   in dictionaries keyed by timer identity.
 - `windows/floating_timer_window.py`: native utility flags, explicit visual state
@@ -126,7 +150,7 @@ mouse input, and verifies native stacking against a separate application
 process. It restores the pointer and closes its test windows when complete.
 Other operating systems still require their own native window-manager checks.
 
-Validated on KDE Wayland through XWayland at 125% display scaling: 27 automated
+Validated on KDE Wayland through XWayland at 125% display scaling: 37 automated
 tests and 53 native desktop checks passed. Native stacking confirms the floating
 timer remains above an active normal window in another process. Root-framebuffer
 capture is unavailable through this XWayland session, so that screenshot check

@@ -1,5 +1,7 @@
 """The 500×500 primary window and deterministic owner of all timers."""
 
+from uuid import uuid4
+
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import (
@@ -9,6 +11,7 @@ from PySide6.QtWidgets import (
 from controllers import TimerController
 from models import TimerModel
 from utils.design import ADD_BUTTON, BACKGROUND, MENU_STYLE, SETTER_SIZE, SURFACE, TEXT, font
+from utils.timer_store import TimerRecord, TimerStore, TimerStoreError
 from widgets.asset_button import AssetButton
 from widgets.timer_item import TimerItem
 from windows.floating_timer_window import FloatingTimerWindow
@@ -16,8 +19,10 @@ from windows.timer_dialog import TimerDialog
 
 
 class SetterWindow(QWidget):
-    def __init__(self) -> None:
+    def __init__(self, store: TimerStore | None = None) -> None:
         super().__init__()
+        self.store = store if store is not None else TimerStore()
+        saved_timers = self.store.load()
         self.setWindowTitle("ClockIn")
         self.setFixedSize(*SETTER_SIZE)
         self.setStyleSheet(f"SetterWindow {{ background: {BACKGROUND}; }}")
@@ -81,8 +86,8 @@ class SetterWindow(QWidget):
         )
         self.add_button.move(260, 10)
         self.add_button.clicked.connect(self._new_timer)
-        for _ in range(3):
-            self.add_timer(300)
+        for record in saved_timers:
+            self._create_timer(record)
 
     def _menu_button(self, text: str, x: int, width: int) -> QPushButton:
         button = QPushButton(text, self)
@@ -98,7 +103,16 @@ class SetterWindow(QWidget):
         return button
 
     def add_timer(self, duration: int = 300) -> TimerController:
-        model = TimerModel(duration, self)
+        record = TimerRecord(uuid4().hex, duration)
+        self.store.save(self._timer_records() + [record])
+        return self._create_timer(record)
+
+    def _timer_records(self) -> list[TimerRecord]:
+        return [TimerRecord(timer_id, controller.model.duration_seconds)
+                for timer_id, controller in self.timers.items()]
+
+    def _create_timer(self, record: TimerRecord) -> TimerController:
+        model = TimerModel(record.duration_seconds, self, timer_id=record.timer_id)
         controller = TimerController(model, self)
         timer_id = model.timer_id
         item = TimerItem(controller, self.timer_content)
@@ -141,6 +155,13 @@ class SetterWindow(QWidget):
         window.restore()
 
     def remove_timer(self, timer_id: str) -> None:
+        if timer_id not in self.timers:
+            return
+        try:
+            self.store.save([record for record in self._timer_records() if record.timer_id != timer_id])
+        except TimerStoreError as exc:
+            self._message("Unable to save timers", str(exc))
+            return
         controller = self.timers.pop(timer_id, None)
         if controller is None:
             return
@@ -182,13 +203,20 @@ class SetterWindow(QWidget):
 
     def _finish_parameter_window(self, timer_id: str | None, dialog: TimerDialog, result: int) -> None:
         self.parameter_windows.pop(timer_id, None)
-        if result == QDialog.DialogCode.Accepted:
-            if timer_id is None:
-                controller = self.add_timer(dialog.duration_seconds)
-                self.scroll_area.ensureWidgetVisible(self.timer_items[controller.model.timer_id])
-            elif timer_id in self.timers:
-                self.timers[timer_id].model.configure(dialog.duration_seconds)
-        dialog.deleteLater()
+        try:
+            if result == QDialog.DialogCode.Accepted:
+                if timer_id is None:
+                    controller = self.add_timer(dialog.duration_seconds)
+                    self.scroll_area.ensureWidgetVisible(self.timer_items[controller.model.timer_id])
+                elif timer_id in self.timers:
+                    records = [TimerRecord(record.timer_id, dialog.duration_seconds)
+                               if record.timer_id == timer_id else record for record in self._timer_records()]
+                    self.store.save(records)
+                    self.timers[timer_id].model.configure(dialog.duration_seconds)
+        except TimerStoreError as exc:
+            self._message("Unable to save timers", str(exc))
+        finally:
+            dialog.deleteLater()
 
     def _set_edit_mode(self, enabled: bool) -> None:
         self.edit_mode = enabled

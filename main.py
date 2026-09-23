@@ -12,9 +12,10 @@ def main() -> int:
         os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
 
     from PySide6.QtGui import QFontDatabase
-    from PySide6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication, QMessageBox
 
     from utils.design import ASSETS, font
+    from utils.timer_store import TimerStoreError
     from windows.setter_window import SetterWindow
 
     app = QApplication(sys.argv)
@@ -24,7 +25,11 @@ def main() -> int:
     for path in (ASSETS / "fonts").glob("*.ttf"):
         QFontDatabase.addApplicationFont(str(path))
     app.setFont(font(14))
-    window = SetterWindow()
+    try:
+        window = SetterWindow()
+    except TimerStoreError as exc:
+        QMessageBox.critical(None, "Unable to load timers", str(exc))
+        return 1
     window.show()
     return app.exec()
 

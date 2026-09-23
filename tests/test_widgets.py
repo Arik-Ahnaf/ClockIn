@@ -4,6 +4,8 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from PySide6.QtCore import QEvent, QPoint, QPointF, Qt
@@ -14,6 +16,7 @@ from PySide6.QtWidgets import QApplication, QDialog
 from controllers import TimerController
 from models import TimerModel, TimerState
 from utils.design import ASSETS
+from utils.timer_store import TimerRecord, TimerStore, TimerStoreError
 from windows.floating_timer_window import FloatingTimerWindow, VisualState
 from windows.setter_window import SetterWindow
 from windows.timer_dialog import TimerDialog
@@ -129,7 +132,10 @@ class FloatingInteractionTests(unittest.TestCase):
 
 class SetterIntegrationTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.window = SetterWindow()
+        self.directory = TemporaryDirectory()
+        self.store = TimerStore(Path(self.directory.name) / "timers.json")
+        self.store.save([TimerRecord(f"test-{index}", 300) for index in range(3)])
+        self.window = SetterWindow(self.store)
         self.window.show()
         APP.processEvents()
 
@@ -137,6 +143,60 @@ class SetterIntegrationTests(unittest.TestCase):
         self.window.close()
         self.window.deleteLater()
         APP.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        self.directory.cleanup()
+
+    def test_empty_database_has_no_hard_coded_timers(self) -> None:
+        store = TimerStore(Path(self.directory.name) / "empty.json")
+        empty = SetterWindow(store)
+        try:
+            self.assertFalse(empty.timers)
+            self.assertFalse(empty.timer_items)
+            self.assertEqual(store.load(), [])
+        finally:
+            empty.close()
+            empty.deleteLater()
+
+    def test_add_edit_delete_and_restart_restore_only_saved_definitions(self) -> None:
+        added = self.window.add_timer(125)
+        timer_id = added.model.timer_id
+        self.window.configure_timer(timer_id)
+        dialog = self.window.parameter_windows[timer_id]
+        for field, value in zip(dialog.fields, (1, 2, 3), strict=True):
+            field.setValue(value)
+        dialog.accept()
+        self.window.remove_timer("test-1")
+        self.window.show_timer(timer_id)
+        expected = [TimerRecord("test-0", 300), TimerRecord("test-2", 300), TimerRecord(timer_id, 3723)]
+        # Saved immediately, before close; countdown ticks never rewrite the file.
+        self.assertEqual(self.store.load(), expected)
+        self.window.close()
+        reopened = SetterWindow(TimerStore(self.store.path))
+        try:
+            self.assertEqual(list(reopened.timers), [record.timer_id for record in expected])
+            self.assertEqual([item.display_text.text() for item in reopened.timer_items.values()],
+                             ["00:05:00", "00:05:00", "01:02:03"])
+            self.assertTrue(all(timer.model.state is TimerState.IDLE for timer in reopened.timers.values()))
+            self.assertFalse(reopened.floating_windows)
+        finally:
+            reopened.close()
+            reopened.deleteLater()
+
+    def test_save_failures_do_not_apply_add_edit_or_delete(self) -> None:
+        original = self.store.path.read_bytes()
+        with patch.object(self.store, "save", side_effect=TimerStoreError("Disk unavailable")), \
+                patch.object(self.window, "_message") as message:
+            with self.assertRaises(TimerStoreError):
+                self.window.add_timer(20)
+            self.window.remove_timer("test-0")
+            self.assertIn("test-0", self.window.timers)
+            self.window.configure_timer("test-0")
+            dialog = self.window.parameter_windows["test-0"]
+            dialog.fields[1].setValue(10)
+            dialog.accept()
+            self.assertEqual(self.window.timers["test-0"].model.duration_seconds, 300)
+            self.assertEqual(len(self.window.timers), 3)
+            self.assertEqual(message.call_count, 2)
+        self.assertEqual(self.store.path.read_bytes(), original)
 
     def test_design_dimensions_and_card_positions(self) -> None:
         self.assertEqual((self.window.width(), self.window.height()), (500, 500))
