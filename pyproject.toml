@@ -1,6 +1,6 @@
 [project]
 name = "clockin"
-version = "0.1.0"
+version = "0.1.1"
 description = "Figma-based PySide6 desktop timers with floating utility windows"
 readme = "README.md"
 authors = [

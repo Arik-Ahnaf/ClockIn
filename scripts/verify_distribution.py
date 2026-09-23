@@ -22,7 +22,9 @@ def main() -> int:
     if not (args.bundle / executable_name).is_file():
         raise SystemExit(f"Build first: missing {args.bundle / executable_name}")
     with TemporaryDirectory(prefix="clockin-relocated-") as temporary:
-        directory = Path(temporary)
+        # Windows may provide an 8.3 TEMP path (RUNNER~1); normalize it just
+        # like the application does before comparing resource locations.
+        directory = Path(temporary).resolve()
         bundle = directory / "ClockIn"
         shutil.copytree(args.bundle, bundle, symlinks=True)
         executable = bundle / executable_name

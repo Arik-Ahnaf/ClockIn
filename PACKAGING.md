@@ -45,7 +45,7 @@ From PowerShell:
 ```
 
 This builds and verifies the relocated distribution. Deliver the generated
-`dist/ClockIn-0.1.0-windows-x86_64.zip`, or the entire `dist/ClockIn/` folder.
+`dist/ClockIn-0.1.1-windows-x86_64.zip`, or the entire `dist/ClockIn/` folder.
 Extract the ZIP before launching `ClockIn.exe`. Python is included; the recipient
 needs no Python installation. `console=False` selects the Windows GUI subsystem,
 and the spec embeds `assets/logo.ico` into the executable. Qt also uses this icon
@@ -64,10 +64,10 @@ Build as a regular user:
 This builds the same onedir application, verifies it, then runs `makepkg`.
 `build.py` generates `dist/arch/PKGBUILD` from the committed template and fills in
 the version, archive name, and SHA-256 of the actual build. The result is
-`dist/arch/clockin-0.1.0-1-x86_64.pkg.tar.zst`. Install it with:
+`dist/arch/clockin-0.1.1-1-x86_64.pkg.tar.zst`. Install it with:
 
 ```sh
-sudo pacman -U dist/arch/clockin-0.1.0-1-x86_64.pkg.tar.zst
+sudo pacman -U dist/arch/clockin-0.1.1-1-x86_64.pkg.tar.zst
 ```
 
 Installation places the complete distribution in `/opt/clockin`, adds a

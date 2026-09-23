@@ -27,8 +27,9 @@ class ResourcePathTests(unittest.TestCase):
                 patch.object(sys, "frozen", True, create=True), \
                 patch.object(sys, "executable", str(Path(directory) / "ClockIn.exe")), \
                 patch.object(sys, "_MEIPASS", "/unrelated/internal", create=True):
-            self.assertEqual(application_directory(), Path(directory))
-            self.assertEqual(resource_path("assets/logo.ico"), Path(directory) / "assets/logo.ico")
+            expected = Path(directory).resolve()
+            self.assertEqual(application_directory(), expected)
+            self.assertEqual(resource_path("assets/logo.ico"), expected / "assets/logo.ico")
 
     def test_resource_paths_cannot_escape_root(self) -> None:
         for name in ("../timers.json", str(Path.cwd() / "timers.json")):
