@@ -14,8 +14,8 @@ from utils.design import ADD_BUTTON, BACKGROUND, MENU_STYLE, SETTER_SIZE, SURFAC
 from utils.timer_store import TimerRecord, TimerStore, TimerStoreError
 from widgets.asset_button import AssetButton
 from widgets.timer_item import TimerItem
-from windows.floating_timer_window import FloatingTimerWindow
-from windows.timer_dialog import TimerDialog
+from pages.floating_timer_window import FloatingTimerWindow
+from pages.timer_dialog import TimerDialog
 
 
 class SetterWindow(QWidget):

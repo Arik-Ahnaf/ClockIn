@@ -17,9 +17,9 @@ from controllers import TimerController
 from models import TimerModel, TimerState
 from utils.design import ASSETS
 from utils.timer_store import TimerRecord, TimerStore, TimerStoreError
-from windows.floating_timer_window import FloatingTimerWindow, VisualState
-from windows.setter_window import SetterWindow
-from windows.timer_dialog import TimerDialog
+from pages.floating_timer_window import FloatingTimerWindow, VisualState
+from pages.setter_window import SetterWindow
+from pages.timer_dialog import TimerDialog
 
 # Created while discovery imports modules, before any QCoreApplication-only tests.
 APP = QApplication.instance() or QApplication([])

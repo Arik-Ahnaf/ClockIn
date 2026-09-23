@@ -31,8 +31,8 @@ from PySide6.QtWidgets import QApplication, QWidget
 from models import TimerState
 from utils.design import ASSETS, FLOAT_TEXT, MUTED, SURFACE, font
 from utils.timer_store import TimerRecord, TimerStore
-from windows.floating_timer_window import VisualState
-from windows.setter_window import SetterWindow
+from pages.floating_timer_window import VisualState
+from pages.setter_window import SetterWindow
 from native_x11 import NativeX11
 
 

@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QColor, QIcon, QPainter, QShortcut, QKeySequence
 from PySide6.QtWidgets import (
     QDialog, QLabel, QPushButton, QSpinBox, QWidget,
@@ -58,14 +58,18 @@ class TimerDialog(QDialog):
             label.setBuddy(field)
             field.valueChanged.connect(self._validate)
             self.fields.append(field)
-        self.set_button = QPushButton("Set", self)
+        self.set_button = QPushButton(self)
         self.set_button.setIcon(QIcon(str(ASSETS / "set.png")))
+        self.set_button.setAccessibleName("Set timer")
         self.set_button.setGeometry(140, 209, 100, 36)
         self.set_button.setDefault(True)
-        cancel = QPushButton("Cancel", self)
+        cancel = QPushButton(self)
+        cancel.setIcon(QIcon(str(ASSETS / "cross.png")))
+        cancel.setAccessibleName("Cancel")
+        cancel.setToolTip("Cancel")
         cancel.setGeometry(260, 209, 100, 36)
         for button, color in ((self.set_button, ACCENT), (cancel, SURFACE)):
-            button.setFont(font(20, True, family="Open Sans"))
+            button.setIconSize(QSize(24, 24))
             button.setCursor(Qt.CursorShape.PointingHandCursor)
             button.setStyleSheet(
                 f"QPushButton {{ background: {color}; color: {TEXT}; border: none;"

@@ -107,7 +107,7 @@ ClockIn/
 ├── main.py
 ├── models/
 ├── controllers/
-├── windows/
+├── pages/
 ├── widgets/
 ├── utils/
 ├── assets/
@@ -121,11 +121,11 @@ ClockIn/
   while running. Refresh frequency never determines elapsed time.
 - `utils/timer_store.py`: validates timer definitions and reads/writes the local
   JSON database using atomic replacement.
-- `windows/setter_window.py`: owns models/controllers, cards, and floating windows
+- `pages/setter_window.py`: owns models/controllers, cards, and floating windows
   in dictionaries keyed by timer identity.
-- `windows/floating_timer_window.py`: native utility flags, explicit visual state
+- `pages/floating_timer_window.py`: native utility flags, explicit visual state
   priority (`DRAGGING > HOVER > DEFAULT`), mouse capture, and global-offset drag.
-- `windows/timer_dialog.py`, `widgets/`, `utils/`, `assets/`: configuration,
+- `pages/timer_dialog.py`, `widgets/`, `utils/`, `assets/`: configuration,
   reusable controls, centralized design values, and artwork/fonts.
 
 ## Verify

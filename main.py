@@ -16,7 +16,7 @@ def main() -> int:
 
     from utils.design import ASSETS, font
     from utils.timer_store import TimerStoreError
-    from windows.setter_window import SetterWindow
+    from pages.setter_window import SetterWindow
 
     app = QApplication(sys.argv)
     app.setApplicationName("ClockIn")
