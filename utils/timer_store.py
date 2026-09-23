@@ -3,13 +3,15 @@
 from dataclasses import asdict, dataclass
 import json
 import os
+import sys
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from models import MAX_DURATION_SECONDS
+from utils.paths import is_bundled, resource_path, user_data_directory
 
 
-DEFAULT_DATABASE = Path(__file__).resolve().parents[1] / "timers.json"
+DEFAULT_DATABASE = resource_path("timers.json")
 
 
 class TimerStoreError(Exception):
@@ -23,21 +25,42 @@ class TimerRecord:
 
 
 class TimerStore:
-    def __init__(self, path: Path = DEFAULT_DATABASE) -> None:
-        self.path = Path(path)
+    def __init__(self, path: Path | None = None) -> None:
+        self._legacy_path: Path | None = None
+        if path is None and (sys.platform == "win32" or is_bundled()):
+            # Both Program Files and /opt may be read-only to the current user.
+            try:
+                self.path = user_data_directory() / "timers.json"
+            except OSError as exc:
+                raise TimerStoreError(str(exc)) from exc
+            self._legacy_path = DEFAULT_DATABASE
+        else:
+            self.path = Path(path) if path is not None else DEFAULT_DATABASE
 
     def load(self) -> list[TimerRecord]:
+        source = self.path
         try:
-            contents = self.path.read_text(encoding="utf-8")
+            if not source.exists() and self._legacy_path is not None and self._legacy_path.is_file():
+                source = self._legacy_path
+            contents = source.read_text(encoding="utf-8")
         except FileNotFoundError:
-            self.save([])
-            return []
+            try:
+                defaults = json.loads(resource_path("defaults/timers.json").read_text(encoding="utf-8"))
+                records = self._validate(defaults)
+            except (OSError, UnicodeError, ValueError) as exc:
+                raise TimerStoreError(f"Cannot load default timers: {exc}") from exc
+            self.save(records)
+            return records
         except (OSError, UnicodeError) as exc:
-            raise TimerStoreError(f"Cannot read {self.path}: {exc}") from exc
+            raise TimerStoreError(f"Cannot read {source}: {exc}") from exc
         try:
-            return self._validate(json.loads(contents))
+            records = self._validate(json.loads(contents))
         except ValueError as exc:
-            raise TimerStoreError(f"Invalid timer database {self.path}: {exc}. The file was not changed.") from exc
+            raise TimerStoreError(f"Invalid timer database {source}: {exc}. The file was not changed.") from exc
+        if source != self.path:
+            # Import once, leaving the original database intact.
+            self.save(records)
+        return records
 
     def save(self, timers: list[TimerRecord]) -> None:
         payload = {"version": 1, "timers": [asdict(timer) for timer in timers]}

@@ -1,157 +1,120 @@
 # ClockIn
 
-A Python / PySide6 desktop timer with a fixed-size setter and independently
-draggable floating timers. Countdown state is shared between both views; all
-visual changes are immediate, with no animations.
+ClockIn is a desktop timer app with floating timers that stay above your other
+windows. Keep track of multiple countdowns while you work, study, or take a break.
 
-## Run
+## Features
 
-Requires Python 3.14+ and a desktop session.
+- Create multiple timers with custom hours, minutes, and seconds.
+- Keep each countdown visible in its own movable, always-on-top window.
+- Pause, resume, and reset timers independently.
+- Manage all your timers from one main window.
+- Save your timer durations automatically for your next session.
+- Use the app offline, with no account required. Your timers stay on your device.
+
+## Installing
+
+Download ClockIn from the official
+[Releases page](https://github.com/Arik-Ahnaf/ClockIn/releases). Open a release's
+**Assets** list and choose the download for your operating system. Use the packaged
+app rather than GitHub's **Source code** archives; you do not need to install
+Python or build ClockIn yourself.
+
+### Windows
+
+1. Download the `ClockIn-<version>-windows-x86_64.zip` asset for 64-bit Windows.
+2. Right-click the ZIP and select **Extract All**.
+3. Open the extracted `ClockIn` folder and double-click **ClockIn.exe**.
+
+This is a portable app, so there is no installer. Keep the entire extracted folder
+together; the executable needs the files beside it. You can create a shortcut to
+`ClockIn.exe` for easier access.
+
+### Arch Linux
+
+Download the `clockin-<version>-<release>-x86_64.pkg.tar.zst` asset. In a terminal
+opened in your download folder, install it with the following command, replacing
+`<filename>` with the downloaded package's name:
 
 ```sh
-uv sync --locked
-uv run python main.py
+sudo pacman -U ./<filename>.pkg.tar.zst
 ```
 
-Alternatively, create a Python virtual environment, install `PySide6>=6.11.2`,
-and run `python main.py` from this directory.
+Then open **ClockIn** from your application launcher, or run:
 
-On Linux, ClockIn selects Qt's `xcb` backend when an X11/XWayland display is
-available. This supports the required arbitrary global-position dragging; native
-Wayland restricts client positioning. An explicitly supplied `QT_QPA_PLATFORM`
-is respected. Install your distribution's XWayland and Qt xcb runtime libraries
-if needed. Windows and macOS use Qt's native default backend.
-
-## Use
-
-- The setter loads its timers from `timers.json` every time the app starts.
-  First launch creates an empty database; add your own timers with the add button.
-- The bottom **add** button, **Settings → New timer**, or **Ctrl+N**, opens a
-  separate, non-modal parameter setter window with native window controls. Hours are
-  0–99; minutes and seconds are 0–59. A duration must be at least one second.
-- Click a card's time to configure it. Reconfiguration returns that timer to idle.
-- Click its play icon to start/resume it and show its floating window. Reopening
-  an already running timer preserves its countdown and reuses the same window.
-- Toggle the bottom **edit** button to show or hide card removal controls.
-  Hovering a card adds its shadow, but does not expose removal controls.
-  Right-click a card for edit/reset/remove.
-- Buttons brighten by 10% while hovered, without shadows. The menu uses 20px text.
-- Drag any floating timer text/background. Pressing immediately uses the expanded
-  dragging appearance; moving uses the original global pointer-to-window offset.
-- Click the floating surface to toggle the expanded pause/delete controls. This
-  follows the approved interpretation of the reference's **Clicked** state.
-  Buttons consume their own input and never initiate a drag.
-- **Space** pauses/resumes a focused floating timer; **Delete** removes it;
-  **Escape** collapses its controls or hides the compact window. Its context menu
-  also provides pause/resume, reset, hide, and delete.
-- Hiding/closing a floating window leaves its countdown running. Deleting a timer
-  stops only that timer. Closing the setter closes the application.
-
-Timer additions, duration changes, and deletions are saved immediately to
-`timers.json` beside `main.py`, independent of the working directory used to launch
-the app. Timer IDs and display order survive restarts. Saved timers reopen idle
-at their configured duration; in-progress countdowns and floating positions are
-not restored. The database is local and ignored by Git.
-
-The file has this structure (durations are whole seconds):
-
-```json
-{
-  "version": 1,
-  "timers": [
-    {"timer_id": "my-timer", "duration_seconds": 300}
-  ]
-}
+```sh
+clockin
 ```
 
-The initial file contains an empty `timers` list. Each ID must be unique and
-non-empty; durations range from 1 to 359999 seconds. You can edit the file while
-ClockIn is closed, then relaunch to load your changes. Invalid or unreadable
-databases show an error and are left intact. Saves replace the file atomically;
-if saving fails, the requested add/edit/delete is not applied. Countdown refreshes
-do not write to disk. No network, account, or storage service is used.
+Use an X11 session or install `xorg-xwayland` when using Wayland so floating timers
+can be positioned and dragged correctly.
 
-## Design and assets
+#### Portable Linux archive
 
-Source: [ClockIn in Figma](https://www.figma.com/design/LM69kzqt9dczj66SLtcRjg/ClockIn?node-id=101-2).
-The Figma MCP request returned a plan quota error, so implementation uses the
-provided `Codex References/` exports. Geometry and colors were measured from
-those files; icon artwork is extracted directly from them, not replaced with
-Unicode symbols. Asset provenance and font limitations are documented in
-[`assets/README.md`](assets/README.md).
+If you prefer the portable download, extract the
+`ClockIn-<version>-linux-x86_64.tar.gz` asset and run the `ClockIn` executable inside
+the extracted folder:
 
-| Surface | Logical pixels |
+```sh
+./ClockIn/ClockIn
+```
+
+Keep the entire folder together. The portable archive still needs your system's
+desktop libraries; the Arch package installs its required dependencies through
+pacman. Linux builds target current Arch Linux and are not guaranteed to work on
+other distributions or older systems.
+
+## Using ClockIn
+
+1. Click the **Add timer** button at the bottom of the main window, or press
+   **Ctrl+N**.
+2. Set the hours, minutes, and seconds. The duration must be at least one second.
+3. Click the timer card's **play** button to start it and show its floating window.
+4. Drag the floating timer's text or background to move it. Click its surface to
+   show or hide the pause and delete controls.
+
+Click a timer card's time to change its duration; this resets that timer. To
+remove timers, use the bottom **Edit timers** button to reveal removal controls.
+You can also right-click a timer card or floating timer for more actions. The
+**Settings** menu lets you pause or reset all timers, or hide their floating windows.
+
+Closing a floating window only hides it; its countdown continues. Click its
+card's play button to show it again. Closing the main ClockIn window exits the
+app and stops all countdowns.
+
+### Keyboard shortcuts
+
+| Shortcut | Action |
 | --- | --- |
-| Setter client area | 500 × 500 |
-| Timer cards | 200 × 50, radius 4 |
-| Parameter dialog | 500 × 300 |
-| Compact floating timer | 200 × 60 |
-| Hover painted surface | 200 × 58 |
-| Expanded / dragging floating timer | 270 × 130 |
+| **Ctrl+N** in the main window | Create a timer |
+| **Space** in a floating timer | Pause or resume |
+| **Delete** in a floating timer | Remove that timer |
+| **Escape** in a floating timer | Collapse its controls, or hide it if already compact |
 
-The hover export is two pixels shorter than idle. Its painted surface follows
-the export while retaining the compact 200 × 60 native hit area, with transparent
-bottom rows, to avoid repeated enter/leave events at the bottom edge. Floating
-surfaces in the supplied exports have square corners; the configuration dialog
-has rounded transparent corners. Qt handles display scaling; measurements are
-never manually multiplied by a device pixel ratio.
+## Saved timers and updates
 
-The bottom section follows the updated Setter Page and Button exports: edit at
-`(140,440)` and add at `(260,440)`, each `100×50` with 30px artwork. Additional
-timers scroll above this fixed section, preserving card dimensions and spacing.
+Timer additions, duration changes, and deletions are saved automatically. On your
+next launch, saved timers start idle at their configured durations. Running
+countdowns and floating-window positions are not restored.
 
-## Structure
+Your timer data is stored separately from the installed app:
 
-```text
-ClockIn/
-├── main.py
-├── models/
-├── controllers/
-├── pages/
-├── widgets/
-├── utils/
-├── assets/
-├── tests/
-└── scripts/
-```
+| Operating system | Timer data |
+| --- | --- |
+| Windows | `%LOCALAPPDATA%\ClockIn\timers.json` |
+| Linux | `~/.local/share/ClockIn/timers.json`, or `$XDG_DATA_HOME/ClockIn/timers.json` if configured |
 
-- `models/timer_model.py`: explicit idle/running/paused/finished lifecycle and a
-  monotonic deadline. Published snapshots keep the two displays synchronized.
-- `controllers/timer_controller.py`: a 50 ms `QTimer` refreshes the model only
-  while running. Refresh frequency never determines elapsed time.
-- `utils/timer_store.py`: validates timer definitions and reads/writes the local
-  JSON database using atomic replacement.
-- `pages/setter_window.py`: owns models/controllers, cards, and floating windows
-  in dictionaries keyed by timer identity.
-- `pages/floating_timer_window.py`: native utility flags, explicit visual state
-  priority (`DRAGGING > HOVER > DEFAULT`), mouse capture, and global-offset drag.
-- `pages/timer_dialog.py`, `widgets/`, `utils/`, `assets/`: configuration,
-  reusable controls, centralized design values, and artwork/fonts.
+To back up your timers, close ClockIn and copy this file to a safe location.
 
-## Verify
+To update a portable installation, close ClockIn, download the new release, and
+extract it into a new folder. Launch the new copy; your saved timers remain in
+the same data location. On Arch Linux, install the newer package with
+`sudo pacman -U` as above.
 
-```sh
-QT_QPA_PLATFORM=offscreen uv run python -m unittest discover -s tests -v
-```
+## Help and feedback
 
-Tests cover delayed refreshes, exact finish deadlines, pause/resume, independent
-timers, shared views, lifecycle cleanup, fixed dimensions, and input state
-regressions. Offscreen Qt may log unsupported window-manager operations; use the
-native check for actual stacking and pointer behavior.
+Report bugs or request features on the
+[issue tracker](https://github.com/Arik-Ahnaf/ClockIn/issues). For installation
+problems, include your operating system, ClockIn version, and any error message.
 
-On an X11/XWayland desktop with `libX11`, `libXtst`, and `xprop`:
-
-```sh
-QT_QPA_PLATFORM=xcb uv run python scripts/validate_desktop.py
-```
-
-This check temporarily creates test windows, moves the pointer, exercises real
-mouse input, and verifies native stacking against a separate application
-process. It restores the pointer and closes its test windows when complete.
-Other operating systems still require their own native window-manager checks.
-
-Validated on KDE Wayland through XWayland at 125% display scaling: 37 automated
-tests and 53 native desktop checks passed. Native stacking confirms the floating
-timer remains above an active normal window in another process. Root-framebuffer
-capture is unavailable through this XWayland session, so that screenshot check
-is explicitly skipped; per-widget screenshots and native stacking are available.
+For developer build and verification instructions, see [PACKAGING.md](PACKAGING.md).

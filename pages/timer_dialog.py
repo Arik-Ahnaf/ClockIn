@@ -1,3 +1,5 @@
+import sys
+
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QColor, QIcon, QPainter, QShortcut, QKeySequence
 from PySide6.QtWidgets import (
@@ -21,7 +23,9 @@ class TimerDialog(QDialog):
         self._owner = parent
         self.setWindowTitle("Set the parameters")
         self.setFixedSize(500, 300)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        # Qt only supports translucent top-level Windows widgets when frameless.
+        # Keep this dialog's native title bar and use an opaque client background.
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, sys.platform != "win32")
         self.setAttribute(Qt.WidgetAttribute.WA_QuitOnClose, False)
         self.setModal(False)
         title = QLabel("Set the parameters", self)
@@ -108,6 +112,8 @@ class TimerDialog(QDialog):
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        if not self.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground):
+            painter.fillRect(self.rect(), QColor(BACKGROUND))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QColor(BACKGROUND))
         painter.drawRoundedRect(self.rect(), 4, 4)

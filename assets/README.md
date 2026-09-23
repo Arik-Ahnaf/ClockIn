@@ -113,3 +113,9 @@ match these individual font files' embedded OFL metadata:
 - <https://github.com/notofonts/latin-greek-cyrillic>
 - <https://raw.githubusercontent.com/notofonts/latin-greek-cyrillic/main/OFL.txt>
 - Comparison fonts: <https://github.com/google/fonts>
+
+## Application icon
+
+`logo.ico` is a direct Qt ICO conversion of the existing 240×240 `Logo.png`.
+The original artwork is unchanged. Both files remain ordinary distribution
+resources; the ICO is also used for the Windows executable icon.

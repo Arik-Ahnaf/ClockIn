@@ -69,6 +69,53 @@ class TimerStoreTests(unittest.TestCase):
             self.store.save([TimerRecord("bad", 0)])
         self.assertEqual(self.store.load(), [TimerRecord("keep", 10)])
 
+    def windows_store(self) -> TimerStore:
+        with patch("utils.timer_store.sys.platform", "win32"), \
+                patch("utils.paths.QStandardPaths.writableLocation", return_value=self.directory.name), \
+                patch("utils.timer_store.DEFAULT_DATABASE", self.path):
+            return TimerStore()
+
+    def test_windows_first_launch_uses_user_data_directory(self) -> None:
+        store = self.windows_store()
+        self.assertEqual(store.path, Path(self.directory.name) / "ClockIn" / "timers.json")
+        self.assertEqual(store.load(), [])
+        self.assertTrue(store.path.is_file())
+        self.assertFalse(self.path.exists())
+
+    def test_windows_imports_legacy_data_once_without_modifying_source(self) -> None:
+        original = [TimerRecord("existing", 125)]
+        self.store.save(original)
+        before = self.path.read_bytes()
+        store = self.windows_store()
+        self.assertEqual(store.load(), original)
+        self.assertEqual(self.path.read_bytes(), before)
+        store.save([])
+        self.assertEqual(self.windows_store().load(), [])
+
+    def test_windows_invalid_legacy_database_is_preserved(self) -> None:
+        self.path.write_text("{broken", encoding="utf-8")
+        store = self.windows_store()
+        with self.assertRaises(TimerStoreError):
+            store.load()
+        self.assertFalse(store.path.exists())
+        self.assertEqual(self.path.read_text(), "{broken")
+
+    def test_windows_failed_import_preserves_source(self) -> None:
+        records = [TimerRecord("keep", 50)]
+        self.store.save(records)
+        store = self.windows_store()
+        with patch("utils.timer_store.os.replace", side_effect=PermissionError("Denied")):
+            with self.assertRaises(TimerStoreError):
+                store.load()
+        self.assertEqual(self.store.load(), records)
+        self.assertFalse(store.path.exists())
+
+    def test_explicit_database_path_is_respected_on_windows(self) -> None:
+        with patch("utils.timer_store.sys.platform", "win32"):
+            store = TimerStore(self.path)
+        self.assertEqual(store.path, self.path)
+        self.assertEqual(store.load(), [])
+
 
 if __name__ == "__main__":
     unittest.main()

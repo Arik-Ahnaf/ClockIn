@@ -1,10 +1,10 @@
 """Figma pixels are Qt logical pixels; never multiply these by the DPR."""
 
-from pathlib import Path
-
 from PySide6.QtGui import QFont
 
-ASSETS = Path(__file__).resolve().parents[1] / "assets"
+from utils.paths import resource_path, stylesheet
+
+ASSETS = resource_path("assets")
 BACKGROUND = "#2A2D34"
 SURFACE = "#1A1A1A"
 TEXT = "#FFFFF3"
@@ -35,11 +35,4 @@ def time_text(seconds: int, *, compact: bool = False) -> str:
     return f"{hours_text}:{minutes:02d}:{seconds:02d}"
 
 
-MENU_STYLE = f"""
-QMenu {{ background: {BACKGROUND}; color: {TEXT}; border: 1px solid #868686;
-         padding: 5px; font-family: '{FONT_FAMILY}'; font-size: 14px; }}
-QMenu::item {{ padding: 7px 20px; }}
-QMenu::item:selected {{ background: {ACCENT}; }}
-QMenu::item:disabled {{ color: {MUTED}; }}
-QMenu::separator {{ height: 1px; background: #464646; margin: 4px; }}
-"""
+MENU_STYLE = stylesheet("menu")

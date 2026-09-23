@@ -304,6 +304,22 @@ class SetterIntegrationTests(unittest.TestCase):
         dialog.accept()
         self.assertEqual(dialog.result(), QDialog.DialogCode.Accepted)
 
+    def test_windows_parameter_dialog_preserves_native_frame_and_opaque_background(self) -> None:
+        with patch("pages.timer_dialog.sys.platform", "win32"):
+            dialog = TimerDialog(60, self.window)
+        try:
+            self.assertFalse(dialog.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground))
+            self.assertFalse(dialog.windowFlags() & Qt.WindowType.FramelessWindowHint)
+            self.assertTrue(dialog.windowFlags() & Qt.WindowType.WindowCloseButtonHint)
+            self.assertEqual((dialog.width(), dialog.height()), (500, 300))
+            image = dialog.grab().toImage()
+            for x, y in ((0, 0), (499, 0), (0, 299), (499, 299)):
+                self.assertEqual(image.pixelColor(x, y).name(), "#2a2d34")
+                self.assertEqual(image.pixelColor(x, y).alpha(), 255)
+        finally:
+            dialog.close()
+            dialog.deleteLater()
+
 
 if __name__ == "__main__":
     unittest.main()

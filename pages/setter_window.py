@@ -12,6 +12,7 @@ from controllers import TimerController
 from models import TimerModel
 from utils.design import ADD_BUTTON, BACKGROUND, MENU_STYLE, SETTER_SIZE, SURFACE, TEXT, font
 from utils.timer_store import TimerRecord, TimerStore, TimerStoreError
+from utils.paths import stylesheet
 from widgets.asset_button import AssetButton
 from widgets.timer_item import TimerItem
 from pages.floating_timer_window import FloatingTimerWindow
@@ -25,7 +26,7 @@ class SetterWindow(QWidget):
         saved_timers = self.store.load()
         self.setWindowTitle("ClockIn")
         self.setFixedSize(*SETTER_SIZE)
-        self.setStyleSheet(f"SetterWindow {{ background: {BACKGROUND}; }}")
+        self.setStyleSheet(stylesheet("main"))
         self.timers: dict[str, TimerController] = {}
         self.floating_windows: dict[str, FloatingTimerWindow] = {}
         self.timer_items: dict[str, TimerItem] = {}
