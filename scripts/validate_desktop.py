@@ -272,8 +272,8 @@ class Validation:
         self.evidence["floating_native_properties"] = props
         self.evidence["floating_native_geometry"] = self.native.geometry(native_id)
         self.check("_NET_WM_STATE_ABOVE" in props, "Native window manager records always-on-top state")
-        self.check("_NET_WM_WINDOW_TYPE_UTILITY" in props, "Native window type is a utility window")
-        self.check("_NET_WM_WINDOW_TYPE_UTILITY" in props, "Floating window advertises utility semantics for taskbar suppression")
+        self.check("_NET_WM_WINDOW_TYPE_NORMAL" in props and "_NET_WM_WINDOW_TYPE_UTILITY" not in props,
+                   "Independent X11 window avoids utility-window group minimization")
         hints = subprocess.check_output(["xprop", "-id", hex(native_id), "WM_NORMAL_HINTS"], text=True)
         self.evidence["floating_size_hints"] = hints
         self.check(f"program specified minimum size: {round(200 * floating.devicePixelRatioF())} by {round(60 * floating.devicePixelRatioF())}" in hints
@@ -321,6 +321,29 @@ class Validation:
         else:
             self.check(sampled.name().upper() == SURFACE,
                        "Desktop framebuffer shows timer pixels over unrelated app", sampled.name())
+
+        self.check(floating.windowHandle().transientParent() is None,
+                   "Floating timer has no native dependency on the setter")
+        self.check("_NET_WM_STATE_ABOVE" not in self.native.properties(int(self.setter.winId())),
+                   "Setter remains a normal non-topmost window")
+        for state, change_state in (("minimized", self.setter.showMinimized),
+                                    ("hidden", self.setter.hide)):
+            change_state()
+            self.wait(350)
+            stack = self.native.stacking()
+            props = self.native.properties(native_id)
+            active = subprocess.check_output(["xprop", "-root", "_NET_ACTIVE_WINDOW"], text=True)
+            self.check(hex(other_id) in active,
+                       f"Unrelated app remains active with setter {state}", active.strip())
+            self.check(floating.isVisible() and floating.windowHandle().isExposed()
+                       and "_NET_WM_STATE_HIDDEN" not in props
+                       and "_NET_WM_STATE_ABOVE" in props
+                       and native_id in stack and other_id in stack
+                       and stack.index(native_id) > stack.index(other_id),
+                       f"Floating timer stays visible above unrelated app with setter {state}",
+                       {"properties": props, "stack": [hex(i) for i in stack]})
+        self.setter.showNormal()
+        self.wait(350)
 
         self.other_process.terminate()
         self.other_process.wait(timeout=5)

@@ -116,7 +116,8 @@ class FloatingInteractionTests(unittest.TestCase):
         flags = self.window.windowFlags()
         self.assertTrue(flags & Qt.WindowType.FramelessWindowHint)
         self.assertTrue(flags & Qt.WindowType.WindowStaysOnTopHint)
-        self.assertEqual(flags & Qt.WindowType.WindowType_Mask, Qt.WindowType.Tool)
+        expected_type = Qt.WindowType.Window if APP.platformName() == "xcb" else Qt.WindowType.Tool
+        self.assertEqual(flags & Qt.WindowType.WindowType_Mask, expected_type)
         self.assertFalse(self.window.testAttribute(Qt.WidgetAttribute.WA_QuitOnClose))
         self.window.resize(500, 500)
         self.assertEqual((self.window.width(), self.window.height()), (200, 60))
@@ -236,6 +237,32 @@ class SetterIntegrationTests(unittest.TestCase):
         self.assertNotIn(first, self.window.floating_windows)
         self.assertEqual(self.window.timers[second].model.state, TimerState.RUNNING)
         self.assertTrue(self.window.floating_windows[second].isVisible())
+
+    def test_floating_window_is_independent_but_closes_with_setter(self) -> None:
+        timer_id = next(iter(self.window.timers))
+        self.window.show_timer(timer_id)
+        floating = self.window.floating_windows[timer_id]
+        APP.processEvents()
+        self.assertIsNone(floating.parentWidget())
+        self.assertIsNone(floating.windowHandle().transientParent())
+        self.assertFalse(self.window.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
+        self.assertTrue(floating.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
+        for change_state in (self.window.showMinimized, self.window.hide, self.window.showNormal):
+            change_state()
+            APP.processEvents()
+            self.assertTrue(floating.isVisible())
+            self.assertEqual(floating.model.state, TimerState.RUNNING)
+        self.window.close()
+        self.assertFalse(floating.isVisible())
+        self.assertEqual(floating.model.state, TimerState.PAUSED)
+        destroyed = []
+        floating.destroyed.connect(lambda: destroyed.append(True))
+        self.window.deleteLater()
+        APP.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        APP.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        self.assertEqual(destroyed, [True])
+        # tearDown also closes the setter, so replace the deleted instance.
+        self.window = SetterWindow(self.store)
 
     def test_more_timers_scroll_without_changing_card_size(self) -> None:
         for _ in range(16):

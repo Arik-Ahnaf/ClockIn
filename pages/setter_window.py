@@ -141,7 +141,8 @@ class SetterWindow(QWidget):
             return
         window = self.floating_windows.get(timer_id)
         if window is None:
-            window = FloatingTimerWindow(controller, self)
+            window = FloatingTimerWindow(controller)
+            self.destroyed.connect(window.deleteLater)
             window.remove_requested.connect(lambda: self.remove_timer(timer_id))
             self.floating_windows[timer_id] = window
             offset = 18 * (len(self.floating_windows) - 1)

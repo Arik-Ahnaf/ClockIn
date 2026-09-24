@@ -25,14 +25,20 @@ class FloatingTimerWindow(QWidget):
     remove_requested = Signal()
     closed = Signal()
 
-    def __init__(self, controller: TimerController, parent: QWidget | None = None) -> None:
-        super().__init__(parent, Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint
+    def __init__(self, controller: TimerController) -> None:
+        # X11 window managers can hide all utility windows when the main window
+        # is minimized, even without a parent. Use an independent normal window
+        # on X11/XWayland; retain taskbar-free tool windows on other platforms.
+        window_type = (Qt.WindowType.Window if QApplication.platformName() == "xcb"
+                       else Qt.WindowType.Tool)
+        super().__init__(None, window_type | Qt.WindowType.FramelessWindowHint
                          | Qt.WindowType.WindowStaysOnTopHint)
         self.controller = controller
         self.model = controller.model
         self.setWindowTitle("ClockIn — Floating timer")
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_QuitOnClose, False)
+        self.setAttribute(Qt.WidgetAttribute.WA_MacAlwaysShowToolWindow)
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self._is_hovered = False
