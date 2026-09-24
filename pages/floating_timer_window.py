@@ -78,6 +78,21 @@ class FloatingTimerWindow(QWidget):
     def controls_open(self) -> bool:
         return self._controls_open
 
+    def set_stay_on_top(self, enabled: bool) -> None:
+        flag = Qt.WindowType.WindowStaysOnTopHint
+        if bool(self.windowFlags() & flag) == enabled:
+            return
+        was_visible = self.isVisible()
+        geometry = self.geometry()
+        # Changing QWidget window flags hides/recreates the native window.
+        # Restore only windows that were visible; hidden timers stay hidden.
+        self.setWindowFlag(flag, enabled)
+        self.setGeometry(geometry)
+        if was_visible:
+            self.show()
+            self._is_hovered = self.geometry().contains(QCursor.pos())
+            self._update_visual_state()
+
     def restore(self) -> None:
         self.show()
         self.raise_()

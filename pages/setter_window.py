@@ -63,6 +63,11 @@ class SetterWindow(QWidget):
         self.settings_menu.addAction("Reset all timers", self._reset_all)
         self.settings_menu.addAction("Hide floating timers", self._hide_floating_timers)
         self.settings_menu.addSeparator()
+        self.stay_on_top_action = QAction("Timers stay on top", self)
+        self.stay_on_top_action.setCheckable(True)
+        self.stay_on_top_action.setChecked(True)
+        self.stay_on_top_action.toggled.connect(self._set_timers_stay_on_top)
+        self.settings_menu.addAction(self.stay_on_top_action)
         self.settings_menu.addAction("Quit", self.close)
 
         self.settings_button = self._menu_button("Settings", 10, 73)
@@ -142,6 +147,7 @@ class SetterWindow(QWidget):
         window = self.floating_windows.get(timer_id)
         if window is None:
             window = FloatingTimerWindow(controller)
+            window.set_stay_on_top(self.stay_on_top_action.isChecked())
             self.destroyed.connect(window.deleteLater)
             window.remove_requested.connect(lambda: self.remove_timer(timer_id))
             self.floating_windows[timer_id] = window
@@ -240,6 +246,10 @@ class SetterWindow(QWidget):
     def _hide_floating_timers(self) -> None:
         for window in self.floating_windows.values():
             window.close()
+
+    def _set_timers_stay_on_top(self, enabled: bool) -> None:
+        for window in self.floating_windows.values():
+            window.set_stay_on_top(enabled)
 
     def _show_about(self) -> None:
         self._message("About ClockIn", "ClockIn\n\nA desktop timer built with Python and PySide6.")

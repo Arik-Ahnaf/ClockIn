@@ -238,6 +238,53 @@ class SetterIntegrationTests(unittest.TestCase):
         self.assertEqual(self.window.timers[second].model.state, TimerState.RUNNING)
         self.assertTrue(self.window.floating_windows[second].isVisible())
 
+    def test_stay_on_top_toggle_updates_all_visible_timers_without_resetting(self) -> None:
+        action = self.window.stay_on_top_action
+        self.assertTrue(action.isCheckable())
+        self.assertTrue(action.isChecked())
+        self.assertEqual([item.text() for item in self.window.settings_menu.actions()][-2:],
+                         ["Timers stay on top", "Quit"])
+        for timer_id in ("test-0", "test-1"):
+            self.window.show_timer(timer_id)
+        first, second = self.window.floating_windows.values()
+        first.model.pause()
+        remaining = first.model.remaining_seconds
+        first._controls_open = True
+        first._update_visual_state()
+        geometries = [window.geometry() for window in (first, second)]
+        for enabled in (False, True, False, True):
+            action.trigger()
+            APP.processEvents()
+            for window, geometry in zip((first, second), geometries, strict=True):
+                self.assertEqual(bool(window.windowFlags() & Qt.WindowType.WindowStaysOnTopHint), enabled)
+                self.assertTrue(window.windowFlags() & Qt.WindowType.FramelessWindowHint)
+                self.assertTrue(window.isVisible())
+                self.assertEqual(window.geometry(), geometry)
+            self.assertTrue(first.controls_open)
+            self.assertEqual(first.model.state, TimerState.PAUSED)
+            self.assertEqual(first.model.remaining_seconds, remaining)
+            self.assertEqual(second.model.state, TimerState.RUNNING)
+
+    def test_stay_on_top_applies_to_hidden_reopened_and_new_timers(self) -> None:
+        self.window.show_timer("test-0")
+        hidden = self.window.floating_windows["test-0"]
+        hidden.close()
+        self.window.stay_on_top_action.trigger()
+        self.assertFalse(hidden.isVisible())
+        self.assertFalse(hidden.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
+        self.window.show_timer("test-1")
+        created = self.window.floating_windows["test-1"]
+        self.assertFalse(created.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
+        self.window.show_timer("test-0")
+        self.assertIs(self.window.floating_windows["test-0"], hidden)
+        self.assertTrue(hidden.isVisible())
+        self.assertFalse(hidden.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
+        hidden.close()
+        self.window.stay_on_top_action.trigger()
+        self.assertFalse(hidden.isVisible())
+        self.assertTrue(hidden.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
+        self.assertTrue(created.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
+
     def test_floating_window_is_independent_but_closes_with_setter(self) -> None:
         timer_id = next(iter(self.window.timers))
         self.window.show_timer(timer_id)

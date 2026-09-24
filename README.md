@@ -77,6 +77,9 @@ Click a timer card's time to change its duration; this resets that timer. To
 remove timers, use the bottom **Edit timers** button to reveal removal controls.
 You can also right-click a timer card or floating timer for more actions. The
 **Settings** menu lets you pause or reset all timers, or hide their floating windows.
+Uncheck **Settings → Timers stay on top** to let other apps cover floating timers.
+The setting updates all open timers immediately and applies to timers opened later
+in the same session. It starts checked each time ClockIn launches.
 
 Closing a floating window only hides it; its countdown continues. Click its
 card's play button to show it again. Closing the main ClockIn window exits the
