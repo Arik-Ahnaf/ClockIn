@@ -127,8 +127,85 @@ class FloatingInteractionTests(unittest.TestCase):
         self.window._update_visual_state()
         image = self.window.grab().toImage()
         self.assertEqual(image.pixelColor(0, 0).name(), "#1a1a1a")
-        self.assertEqual(image.pixelColor(0, 57).alpha(), 255)
+        self.assertAlmostEqual(image.pixelColor(0, 57).alphaF(), 0.7, delta=1 / 255)
         self.assertEqual(image.pixelColor(0, 59).alpha(), 0)
+
+    def open_controls(self) -> None:
+        self.window.show()
+        APP.processEvents()
+        QTest.mouseClick(self.window, Qt.MouseButton.LeftButton, pos=QPoint(30, 20))
+        self.assertTrue(self.window.controls_open)
+
+    def test_inactivity_rolls_back_to_idle_without_stopping_countdown(self) -> None:
+        self.assertEqual(self.window._rollback_timer.interval(), 20_000)
+        self.window._rollback_timer.setInterval(120)
+        self.controller.start()
+        self.open_controls()
+        QTest.qWait(180)
+        self.assertFalse(self.window.controls_open)
+        self.assertEqual(self.window.visual_state, VisualState.DEFAULT)
+        self.assertEqual(self.window.size().toTuple(), (200, 60))
+        self.assertFalse(self.window.pause_button.isVisible())
+        self.assertFalse(self.window.remove_button.isVisible())
+        self.assertEqual(self.model.state, TimerState.RUNNING)
+
+    def test_button_and_shortcut_presses_restart_inactivity(self) -> None:
+        self.window._rollback_timer.setInterval(240)
+        for press in (
+            lambda: QTest.mouseClick(self.window.pause_button, Qt.MouseButton.LeftButton),
+            lambda: QTest.keyClick(self.window, Qt.Key.Key_Space),
+        ):
+            self.controller.start()
+            self.open_controls()
+            self.window.activateWindow()
+            self.window.setFocus()
+            APP.processEvents()
+            QTest.qWait(150)
+            press()
+            QTest.qWait(150)
+            self.assertTrue(self.window.controls_open)
+            self.assertFalse(self.window.is_dragging)
+            self.assertEqual(self.model.state, TimerState.PAUSED)
+            QTest.qWait(150)
+            self.assertFalse(self.window.controls_open)
+
+    def test_hover_does_not_extend_inactivity(self) -> None:
+        self.window._rollback_timer.setInterval(240)
+        self.open_controls()
+        QTest.qWait(150)
+        QApplication.sendEvent(self.window, QEvent(QEvent.Type.Leave))
+        QApplication.sendEvent(self.window, QEvent(QEvent.Type.Enter))
+        QTest.qWait(150)
+        self.assertFalse(self.window.controls_open)
+
+    def test_rollback_waits_for_drag_and_held_button(self) -> None:
+        self.window._rollback_timer.setInterval(120)
+        self.open_controls()
+        pointer = self.window.pos() + QPoint(30, 20)
+        mouse(self.window, QEvent.Type.MouseButtonPress, pointer, held=True)
+        mouse(self.window, QEvent.Type.MouseMove, pointer + QPoint(40, 0), held=True)
+        QTest.qWait(180)
+        self.assertTrue(self.window.controls_open)
+        self.assertEqual(self.window.visual_state, VisualState.DRAGGING)
+        mouse(self.window, QEvent.Type.MouseButtonRelease, pointer + QPoint(40, 0))
+        QTest.mousePress(self.window.pause_button, Qt.MouseButton.LeftButton)
+        QTest.qWait(180)
+        self.assertTrue(self.window.controls_open)
+        QTest.mouseRelease(self.window.pause_button, Qt.MouseButton.LeftButton)
+        QTest.qWait(180)
+        self.assertFalse(self.window.controls_open)
+
+    def test_hidden_window_stops_rollback_and_reopening_starts_fresh(self) -> None:
+        self.window._rollback_timer.setInterval(120)
+        self.open_controls()
+        self.window.close()
+        self.assertFalse(self.window._rollback_timer.isActive())
+        QTest.qWait(180)
+        self.assertTrue(self.window.controls_open)
+        self.window.restore()
+        self.assertTrue(self.window.controls_open)
+        QTest.qWait(180)
+        self.assertFalse(self.window.controls_open)
 
 
 class SetterIntegrationTests(unittest.TestCase):

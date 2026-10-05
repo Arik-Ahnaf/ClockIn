@@ -12,6 +12,7 @@ wheels/
 # Local timer database and temporary atomic writes
 /timers.json
 /.timers.json.*.tmp
+/settings.ini
 
 # Local design sources and agent instructions
 Codex\ References

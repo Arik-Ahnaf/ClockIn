@@ -39,6 +39,7 @@ jobs:
           fontconfig freetype2 libglvnd libx11 libxcb libxext libxrender libxi
           libxkbcommon libxkbcommon-x11 xcb-util-cursor xcb-util-image
           xcb-util-keysyms xcb-util-renderutil xcb-util-wm dbus zlib
+          libcanberra sound-theme-freedesktop
       - uses: actions/checkout@v4
       - run: uv sync --locked --group build
       - run: uv run --no-sync python -m unittest discover -s tests -v

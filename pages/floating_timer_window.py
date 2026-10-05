@@ -2,7 +2,7 @@
 
 from enum import Enum, auto
 
-from PySide6.QtCore import QEvent, QPoint, QRectF, Qt, Signal
+from PySide6.QtCore import QEvent, QPoint, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QCursor, QKeySequence, QMouseEvent, QPainter, QShortcut
 from PySide6.QtWidgets import QApplication, QMenu, QWidget
 
@@ -22,6 +22,8 @@ class VisualState(Enum):
 
 
 class FloatingTimerWindow(QWidget):
+    ROLLBACK_INTERVAL_MS = 20_000
+
     remove_requested = Signal()
     closed = Signal()
 
@@ -50,6 +52,12 @@ class FloatingTimerWindow(QWidget):
         self.visual_state = VisualState.DEFAULT
         self.display_text = ""
         self._expanded = False
+        self._transparent_background = True
+        self._rollback_timer = QTimer(self)
+        self._rollback_timer.setSingleShot(True)
+        self._rollback_timer.setTimerType(Qt.TimerType.PreciseTimer)
+        self._rollback_timer.setInterval(self.ROLLBACK_INTERVAL_MS)
+        self._rollback_timer.timeout.connect(self._rollback_to_idle)
 
         self.pause_button = AssetButton(
             "pause.png", "Pause timer", 50, self,
@@ -63,6 +71,8 @@ class FloatingTimerWindow(QWidget):
         )
         self.remove_button.move(155, 68)
         self.remove_button.clicked.connect(self.remove_requested)
+        for widget in (self, self.pause_button, self.remove_button):
+            widget.installEventFilter(self)
         self.model.changed.connect(self._sync_model)
         QShortcut(QKeySequence("Space"), self, activated=controller.toggle)
         QShortcut(QKeySequence("Delete"), self, activated=self.remove_requested.emit)
@@ -77,6 +87,10 @@ class FloatingTimerWindow(QWidget):
     @property
     def controls_open(self) -> bool:
         return self._controls_open
+
+    def set_transparent_background(self, enabled: bool) -> None:
+        self._transparent_background = enabled
+        self.update()
 
     def set_stay_on_top(self, enabled: bool) -> None:
         flag = Qt.WindowType.WindowStaysOnTopHint
@@ -123,7 +137,33 @@ class FloatingTimerWindow(QWidget):
         self.remove_button.setVisible(self._expanded)
         self.setCursor(Qt.CursorShape.ClosedHandCursor if self._is_dragging
                        else Qt.CursorShape.OpenHandCursor)
+        self._update_rollback_timer()
         self.update()
+
+    def _update_rollback_timer(self, *, restart: bool = False) -> None:
+        if not self.isVisible() or not self._controls_open or self._is_dragging:
+            self._rollback_timer.stop()
+        elif restart or not self._rollback_timer.isActive():
+            self._rollback_timer.start()
+
+    def _rollback_to_idle(self) -> None:
+        if self._is_dragging or self.pause_button.isDown() or self.remove_button.isDown():
+            self._update_rollback_timer(restart=True)
+            return
+        self._controls_open = False
+        self._is_hovered = False
+        self._update_visual_state()
+
+    def eventFilter(self, watched, event: QEvent) -> bool:
+        # Observe child controls without consuming their clicks. ShortcutOverride
+        # also catches keys that QShortcut handles before a KeyPress is delivered.
+        if event.type() in (
+            QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonDblClick,
+            QEvent.Type.MouseButtonRelease, QEvent.Type.KeyPress,
+            QEvent.Type.ShortcutOverride,
+        ):
+            self._update_rollback_timer(restart=True)
+        return super().eventFilter(watched, event)
 
     def enterEvent(self, event) -> None:
         self._is_hovered = True
@@ -206,7 +246,12 @@ class FloatingTimerWindow(QWidget):
             self._finish_drag(QCursor.pos())
         self._is_hovered = False
         self._update_visual_state()
+        self._rollback_timer.stop()
         super().hideEvent(event)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self._update_rollback_timer(restart=True)
 
     def closeEvent(self, event) -> None:
         if self._is_dragging:
@@ -232,7 +277,9 @@ class FloatingTimerWindow(QWidget):
         surface = self.rect()
         if not self._expanded and self.visual_state is VisualState.HOVER:
             surface.setHeight(FLOAT_HOVER_SIZE[1])
-        painter.fillRect(surface, QColor(SURFACE))
+        background = QColor(SURFACE)
+        background.setAlphaF(0.7 if self._transparent_background else 1.0)
+        painter.fillRect(surface, background)
         active = self._expanded or self.visual_state is not VisualState.DEFAULT
         painter.setPen(QColor(FLOAT_TEXT if active else MUTED))
         painter.setFont(font(48 if self._expanded else 40, True, family="Noto Sans"))

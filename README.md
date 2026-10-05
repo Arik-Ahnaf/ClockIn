@@ -8,6 +8,7 @@ windows. Keep track of multiple countdowns while you work, study, or take a brea
 - Create multiple timers with custom hours, minutes, and seconds.
 - Keep each countdown visible in its own movable, always-on-top window.
 - Pause, resume, and reset timers independently.
+- Hear the system alarm sound when a timer finishes on Windows or Arch Linux.
 - Manage all your timers from one main window.
 - Save your timer durations automatically for your next session.
 - Use the app offline, with no account required. Your timers stay on your device.
@@ -84,6 +85,20 @@ in the same session. It starts checked each time ClockIn launches.
 Closing a floating window only hides it; its countdown continues. Click its
 card's play button to show it again. Closing the main ClockIn window exits the
 app and stops all countdowns.
+
+Each completed countdown plays the operating system's alarm sound once, even
+when its floating window is hidden. Windows uses the alarm sound from your
+system sound scheme (or the default system sound if no alarm is configured).
+Arch Linux uses the desktop sound theme's alarm through `libcanberra`. Sound
+volume and muting follow your system settings. If playback fails, ClockIn tries
+the system bell.
+
+The Arch package installs the sound dependencies automatically. For portable
+or source installations on Arch, install them with:
+
+```sh
+sudo pacman -S libcanberra sound-theme-freedesktop
+```
 
 ### Keyboard shortcuts
 

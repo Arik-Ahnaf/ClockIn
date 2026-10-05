@@ -2,7 +2,7 @@
 
 from uuid import uuid4
 
-from PySide6.QtCore import QPoint, Qt
+from PySide6.QtCore import QPoint, QSettings, Qt
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import (
     QDialog, QFrame, QMenu, QMessageBox, QPushButton, QScrollArea, QWidget,
@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 
 from controllers import TimerController
 from models import TimerModel
+from utils.alarm import AlarmService
 from utils.design import ADD_BUTTON, BACKGROUND, MENU_STYLE, SETTER_SIZE, SURFACE, TEXT, font
 from utils.timer_store import TimerRecord, TimerStore, TimerStoreError
 from utils.paths import stylesheet
@@ -24,6 +25,8 @@ class SetterWindow(QWidget):
         super().__init__()
         self.store = store if store is not None else TimerStore()
         saved_timers = self.store.load()
+        self.settings = QSettings(str(self.store.path.with_name("settings.ini")), QSettings.Format.IniFormat)
+        self.alarm = AlarmService(self)
         self.setWindowTitle("ClockIn")
         self.setFixedSize(*SETTER_SIZE)
         self.setStyleSheet(stylesheet("main"))
@@ -63,6 +66,13 @@ class SetterWindow(QWidget):
         self.settings_menu.addAction("Reset all timers", self._reset_all)
         self.settings_menu.addAction("Hide floating timers", self._hide_floating_timers)
         self.settings_menu.addSeparator()
+        self.transparent_background_action = QAction("Transparent Background", self)
+        self.transparent_background_action.setCheckable(True)
+        self.transparent_background_action.setChecked(
+            self.settings.value("transparent_background", True, type=bool)
+        )
+        self.transparent_background_action.toggled.connect(self._set_transparent_background)
+        self.settings_menu.addAction(self.transparent_background_action)
         self.stay_on_top_action = QAction("Timers stay on top", self)
         self.stay_on_top_action.setCheckable(True)
         self.stay_on_top_action.setChecked(True)
@@ -119,6 +129,7 @@ class SetterWindow(QWidget):
 
     def _create_timer(self, record: TimerRecord) -> TimerController:
         model = TimerModel(record.duration_seconds, self, timer_id=record.timer_id)
+        model.finished.connect(self.alarm.play)
         controller = TimerController(model, self)
         timer_id = model.timer_id
         item = TimerItem(controller, self.timer_content)
@@ -147,6 +158,7 @@ class SetterWindow(QWidget):
         window = self.floating_windows.get(timer_id)
         if window is None:
             window = FloatingTimerWindow(controller)
+            window.set_transparent_background(self.transparent_background_action.isChecked())
             window.set_stay_on_top(self.stay_on_top_action.isChecked())
             self.destroyed.connect(window.deleteLater)
             window.remove_requested.connect(lambda: self.remove_timer(timer_id))
@@ -251,6 +263,11 @@ class SetterWindow(QWidget):
         for window in self.floating_windows.values():
             window.set_stay_on_top(enabled)
 
+    def _set_transparent_background(self, enabled: bool) -> None:
+        self.settings.setValue("transparent_background", enabled)
+        for window in self.floating_windows.values():
+            window.set_transparent_background(enabled)
+
     def _show_about(self) -> None:
         self._message("About ClockIn", "ClockIn\n\nA desktop timer built with Python and PySide6.")
 
@@ -291,5 +308,6 @@ class SetterWindow(QWidget):
             dialog.reject()
         for controller in self.timers.values():
             controller.pause()
+        self.alarm.stop()
         self._hide_floating_timers()
         super().closeEvent(event)

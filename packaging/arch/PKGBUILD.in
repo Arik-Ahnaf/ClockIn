@@ -7,7 +7,7 @@ arch=('x86_64')
 depends=('glibc' 'gcc-libs' 'fontconfig' 'freetype2' 'libglvnd' 'libx11'
          'libxcb' 'libxext' 'libxrender' 'libxi' 'libxkbcommon' 'libxkbcommon-x11'
          'xcb-util-cursor' 'xcb-util-image' 'xcb-util-keysyms' 'xcb-util-renderutil'
-         'xcb-util-wm' 'dbus' 'zlib')
+         'xcb-util-wm' 'dbus' 'zlib' 'libcanberra' 'sound-theme-freedesktop')
 optdepends=('xorg-xwayland: floating window positioning in Wayland sessions')
 # Preserve PyInstaller's binaries and its bundled shared-library layout.
 options=('!strip' '!debug')
