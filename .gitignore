@@ -17,3 +17,4 @@ wheels/
 # Local design sources and agent instructions
 Codex\ References
 AGENTS.md
+/tests
