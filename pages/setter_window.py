@@ -2,8 +2,8 @@
 
 from uuid import uuid4
 
-from PySide6.QtCore import QPoint, QSettings, Qt
-from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
+from PySide6.QtCore import QPoint, QSettings, Qt, QUrl
+from PySide6.QtGui import QAction, QCloseEvent, QDesktopServices, QKeySequence
 from PySide6.QtWidgets import (
     QDialog, QFrame, QMenu, QMessageBox, QPushButton, QScrollArea, QWidget,
 )
@@ -272,20 +272,7 @@ class SetterWindow(QWidget):
         self._message("About ClockIn", "ClockIn\n\nA desktop timer built with Python and PySide6.")
 
     def _show_help(self) -> None:
-        self._message(
-            "ClockIn Help",
-            "Use the bottom add button or Settings → New timer (Ctrl+N) to add a timer. "
-            "The parameter setter opens as a separate window.\n\n"
-            "Use the bottom edit button to show timer removal controls; click it again "
-            "to leave edit mode.\n\n"
-            "Click a timer's time to change its duration. Its play button starts or resumes "
-            "the timer and shows the floating window. Right-click a card to edit, reset, or remove it.\n\n"
-            "Click the floating timer to expand or collapse its controls. Drag any noninteractive "
-            "part to move it; dragging expands the timer immediately. Pause and resume without "
-            "losing elapsed time.\n\n"
-            "Closing a floating window hides it while the timer continues. Open it again from "
-            "its card. Removing a timer stops and deletes that timer. Closing ClockIn stops all timers.",
-        )
+        QDesktopServices.openUrl(QUrl("https://github.com/Arik-Ahnaf/ClockIn/wiki"))
 
     def _message(self, title: str, text: str) -> None:
         message = QMessageBox(self)
