@@ -3,4 +3,7 @@ QMenu { background: #2A2D34; color: #FFFFF3; border: 1px solid #868686;
 QMenu::item { padding: 7px 20px; }
 QMenu::item:selected { background: #13506C; }
 QMenu::item:disabled { color: #868686; }
+QMenu::indicator { width: 14px; height: 14px; left: 15px; }
+QMenu::indicator:checked { image: url("@CHECK_ICON@"); }
+QMenu::indicator:unchecked { image: none; }
 QMenu::separator { height: 1px; background: #464646; margin: 4px; }

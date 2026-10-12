@@ -35,4 +35,4 @@ def time_text(seconds: int, *, compact: bool = False) -> str:
     return f"{hours_text}:{minutes:02d}:{seconds:02d}"
 
 
-MENU_STYLE = stylesheet("menu")
+MENU_STYLE = stylesheet("menu").replace("@CHECK_ICON@", (ASSETS / "check.png").as_posix())
