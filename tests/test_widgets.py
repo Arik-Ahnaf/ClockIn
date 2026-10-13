@@ -316,11 +316,7 @@ class SetterIntegrationTests(unittest.TestCase):
         self.assertTrue(self.window.floating_windows[second].isVisible())
 
     def test_stay_on_top_toggle_updates_all_visible_timers_without_resetting(self) -> None:
-        action = self.window.stay_on_top_action
-        self.assertTrue(action.isCheckable())
-        self.assertTrue(action.isChecked())
-        self.assertEqual([item.text() for item in self.window.settings_menu.actions()][-2:],
-                         ["Timers stay on top", "Quit"])
+        self.assertTrue(self.window.timers_stay_on_top)
         for timer_id in ("test-0", "test-1"):
             self.window.show_timer(timer_id)
         first, second = self.window.floating_windows.values()
@@ -330,7 +326,7 @@ class SetterIntegrationTests(unittest.TestCase):
         first._update_visual_state()
         geometries = [window.geometry() for window in (first, second)]
         for enabled in (False, True, False, True):
-            action.trigger()
+            self.save_settings(stay_on_top=enabled)
             APP.processEvents()
             for window, geometry in zip((first, second), geometries, strict=True):
                 self.assertEqual(bool(window.windowFlags() & Qt.WindowType.WindowStaysOnTopHint), enabled)
@@ -346,7 +342,7 @@ class SetterIntegrationTests(unittest.TestCase):
         self.window.show_timer("test-0")
         hidden = self.window.floating_windows["test-0"]
         hidden.close()
-        self.window.stay_on_top_action.trigger()
+        self.save_settings(stay_on_top=False)
         self.assertFalse(hidden.isVisible())
         self.assertFalse(hidden.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
         self.window.show_timer("test-1")
@@ -357,10 +353,74 @@ class SetterIntegrationTests(unittest.TestCase):
         self.assertTrue(hidden.isVisible())
         self.assertFalse(hidden.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
         hidden.close()
-        self.window.stay_on_top_action.trigger()
+        self.save_settings(stay_on_top=True)
         self.assertFalse(hidden.isVisible())
         self.assertTrue(hidden.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
         self.assertTrue(created.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
+
+    def save_settings(self, *, stay_on_top: bool, transparent: bool = True) -> None:
+        QTest.mouseClick(self.window.settings_button, Qt.MouseButton.LeftButton)
+        dialog = self.window.settings_window
+        dialog.stay_on_top_checkbox.setChecked(stay_on_top)
+        dialog.transparent_background_checkbox.setChecked(transparent)
+        QTest.mouseClick(dialog.save_button, Qt.MouseButton.LeftButton)
+
+    def test_settings_window_reuses_draft_and_exit_escape_close_discard(self) -> None:
+        for dismiss in (lambda dialog: dialog.exit_button.click(),
+                        lambda dialog: QTest.keyClick(dialog, Qt.Key.Key_Escape),
+                        lambda dialog: dialog.close()):
+            QTest.mouseClick(self.window.settings_button, Qt.MouseButton.LeftButton)
+            dialog = self.window.settings_window
+            self.assertTrue(dialog.isVisible())
+            self.assertTrue(dialog.isWindow())
+            self.assertFalse(dialog.isModal())
+            self.assertEqual(dialog.size().toTuple(), (300, 300))
+            dialog.transparent_background_checkbox.click()
+            dialog.stay_on_top_checkbox.click()
+            self.assertTrue(self.window.transparent_background)
+            self.assertTrue(self.window.timers_stay_on_top)
+            self.window._show_settings()
+            self.assertIs(self.window.settings_window, dialog)
+            self.assertFalse(dialog.stay_on_top_checkbox.isChecked())
+            dismiss(dialog)
+            self.assertIsNone(self.window.settings_window)
+            self.assertTrue(self.window.isVisible())
+            self.assertTrue(self.window.transparent_background)
+            self.assertTrue(self.window.timers_stay_on_top)
+
+    def test_settings_save_updates_opacity_persists_and_applies_to_new_timers(self) -> None:
+        self.window.show_timer("test-0")
+        floating = self.window.floating_windows["test-0"]
+        self.save_settings(stay_on_top=False, transparent=False)
+        self.assertIsNone(self.window.settings_window)
+        self.assertFalse(floating._transparent_background)
+        self.assertEqual(floating.grab().toImage().pixelColor(5, 5).alpha(), 255)
+        self.assertEqual(floating.model.state, TimerState.RUNNING)
+        self.window.show_timer("test-1")
+        self.assertFalse(self.window.floating_windows["test-1"]._transparent_background)
+        reopened = SetterWindow(TimerStore(self.store.path))
+        try:
+            reopened._show_settings()
+            self.assertFalse(reopened.settings_window.transparent_background_checkbox.isChecked())
+            self.assertFalse(reopened.settings_window.stay_on_top_checkbox.isChecked())
+            reopened.show_timer("test-0")
+            restored = reopened.floating_windows["test-0"]
+            self.assertFalse(restored._transparent_background)
+            self.assertFalse(restored.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
+        finally:
+            reopened.close()
+            reopened.deleteLater()
+        self.save_settings(stay_on_top=True, transparent=True)
+        self.assertAlmostEqual(floating.grab().toImage().pixelColor(5, 5).alphaF(), 0.7, delta=1 / 255)
+
+    def test_settings_closes_with_owner_without_saving_draft(self) -> None:
+        self.window._show_settings()
+        dialog = self.window.settings_window
+        dialog.stay_on_top_checkbox.click()
+        self.window.close()
+        self.assertIsNone(self.window.settings_window)
+        self.assertFalse(dialog.isVisible())
+        self.assertTrue(self.window.timers_stay_on_top)
 
     def test_floating_window_is_independent_but_closes_with_setter(self) -> None:
         timer_id = next(iter(self.window.timers))

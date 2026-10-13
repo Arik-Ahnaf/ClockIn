@@ -5,19 +5,20 @@ from uuid import uuid4
 from PySide6.QtCore import QPoint, QSettings, Qt, QUrl
 from PySide6.QtGui import QAction, QCloseEvent, QDesktopServices, QKeySequence
 from PySide6.QtWidgets import (
-    QDialog, QFrame, QMenu, QMessageBox, QPushButton, QScrollArea, QWidget,
+    QDialog, QFrame, QMessageBox, QPushButton, QScrollArea, QWidget,
 )
 
 from controllers import TimerController
 from models import TimerModel
 from utils.alarm import AlarmService
-from utils.design import ADD_BUTTON, BACKGROUND, MENU_STYLE, SETTER_SIZE, SURFACE, TEXT, font
+from utils.design import ACCENT, ADD_BUTTON, BACKGROUND, SETTER_SIZE, SURFACE, TEXT, font
 from utils.timer_store import TimerRecord, TimerStore, TimerStoreError
 from utils.paths import stylesheet
 from widgets.asset_button import AssetButton
 from widgets.timer_item import TimerItem
 from pages.floating_timer_window import FloatingTimerWindow
 from pages.timer_dialog import TimerDialog
+from pages.settings_window import SettingsWindow
 
 
 class SetterWindow(QWidget):
@@ -34,6 +35,9 @@ class SetterWindow(QWidget):
         self.floating_windows: dict[str, FloatingTimerWindow] = {}
         self.timer_items: dict[str, TimerItem] = {}
         self.parameter_windows: dict[str | None, TimerDialog] = {}
+        self.settings_window: SettingsWindow | None = None
+        self.transparent_background = self.settings.value("transparent_background", True, type=bool)
+        self.timers_stay_on_top = self.settings.value("timers_stay_on_top", True, type=bool)
         self.edit_mode = False
 
         self.scroll_area = QScrollArea(self)
@@ -54,31 +58,10 @@ class SetterWindow(QWidget):
         self.timer_content.setFixedSize(500, 400)
         self.scroll_area.setWidget(self.timer_content)
 
-        self.settings_menu = QMenu(self)
-        self.settings_menu.setStyleSheet(MENU_STYLE)
         new_action = QAction("New timer", self)
         new_action.setShortcut(QKeySequence.StandardKey.New)
         new_action.triggered.connect(self._new_timer)
-        self.settings_menu.addAction(new_action)
         self.addAction(new_action)
-        self.settings_menu.addSeparator()
-        self.settings_menu.addAction("Pause all timers", self._pause_all)
-        self.settings_menu.addAction("Reset all timers", self._reset_all)
-        self.settings_menu.addAction("Hide floating timers", self._hide_floating_timers)
-        self.settings_menu.addSeparator()
-        self.transparent_background_action = QAction("Transparent Background", self)
-        self.transparent_background_action.setCheckable(True)
-        self.transparent_background_action.setChecked(
-            self.settings.value("transparent_background", True, type=bool)
-        )
-        self.transparent_background_action.toggled.connect(self._set_transparent_background)
-        self.settings_menu.addAction(self.transparent_background_action)
-        self.stay_on_top_action = QAction("Timers stay on top", self)
-        self.stay_on_top_action.setCheckable(True)
-        self.stay_on_top_action.setChecked(True)
-        self.stay_on_top_action.toggled.connect(self._set_timers_stay_on_top)
-        self.settings_menu.addAction(self.stay_on_top_action)
-        self.settings_menu.addAction("Quit", self.close)
 
         self.settings_button = self._menu_button("Settings", 10, 73)
         self.settings_button.clicked.connect(self._show_settings)
@@ -158,8 +141,8 @@ class SetterWindow(QWidget):
         window = self.floating_windows.get(timer_id)
         if window is None:
             window = FloatingTimerWindow(controller)
-            window.set_transparent_background(self.transparent_background_action.isChecked())
-            window.set_stay_on_top(self.stay_on_top_action.isChecked())
+            window.set_transparent_background(self.transparent_background)
+            window.set_stay_on_top(self.timers_stay_on_top)
             self.destroyed.connect(window.deleteLater)
             window.remove_requested.connect(lambda: self.remove_timer(timer_id))
             self.floating_windows[timer_id] = window
@@ -245,25 +228,35 @@ class SetterWindow(QWidget):
             item.set_edit_mode(enabled)
 
     def _show_settings(self) -> None:
-        self.settings_menu.exec(self.settings_button.mapToGlobal(QPoint(0, 30)))
+        dialog = self.settings_window
+        if dialog is None:
+            dialog = SettingsWindow(self.transparent_background, self.timers_stay_on_top, self)
+            self.settings_window = dialog
+            dialog.finished.connect(lambda result: self._finish_settings(dialog, result))
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
 
-    def _pause_all(self) -> None:
-        for controller in self.timers.values():
-            controller.pause()
-
-    def _reset_all(self) -> None:
-        for controller in self.timers.values():
-            controller.reset()
+    def _finish_settings(self, dialog: SettingsWindow, result: int) -> None:
+        self.settings_window = None
+        if result == QDialog.DialogCode.Accepted:
+            self._set_transparent_background(dialog.transparent_background_checkbox.isChecked())
+            self._set_timers_stay_on_top(dialog.stay_on_top_checkbox.isChecked())
+            self.settings.sync()
+        dialog.deleteLater()
 
     def _hide_floating_timers(self) -> None:
         for window in self.floating_windows.values():
             window.close()
 
     def _set_timers_stay_on_top(self, enabled: bool) -> None:
+        self.timers_stay_on_top = enabled
+        self.settings.setValue("timers_stay_on_top", enabled)
         for window in self.floating_windows.values():
             window.set_stay_on_top(enabled)
 
     def _set_transparent_background(self, enabled: bool) -> None:
+        self.transparent_background = enabled
         self.settings.setValue("transparent_background", enabled)
         for window in self.floating_windows.values():
             window.set_transparent_background(enabled)
@@ -284,13 +277,15 @@ class SetterWindow(QWidget):
         message.setStyleSheet(
             f"QMessageBox {{ background: {BACKGROUND}; }}"
             f"QLabel {{ color: {TEXT}; min-width: 320px; }}"
-            f"QPushButton {{ color: {TEXT}; background: #13506C; border: none;"
+            f"QPushButton {{ color: {TEXT}; background: {ACCENT}; border: none;"
             " border-radius: 4px; padding: 7px 20px; }"
         )
         message.exec()
         message.deleteLater()
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        if self.settings_window is not None:
+            self.settings_window.reject()
         for dialog in list(self.parameter_windows.values()):
             dialog.reject()
         for controller in self.timers.values():

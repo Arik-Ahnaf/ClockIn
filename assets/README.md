@@ -34,7 +34,7 @@ The full-circle assets preserve the icon positions within their circle.
 ## Measured geometry and colors
 
 The updated setter bottom buttons occupy `(140,440,100,50)` for edit and
-`(260,440,100,50)` for add. Their fills are `#1A1A1A` and `#009DDC`, radius 8,
+`(260,440,100,50)` for add. Their fills are `#1A1A1A` and `#0088FF`, radius 8,
 with centered 30px `#FFFFF3` artwork. Hover uses Qt's `QColor.lighter(110)`.
 Per the later user instructions, card shadows are hover-only, removal icons
 require edit mode, and buttons have no shadows. The parameter setter is now a
@@ -51,7 +51,7 @@ separate, non-modal native top-level window; the content remains `500×300`.
 - Parameter window: `500×300`, background `#2A2D34`, outer radius about `8`.
 - Parameter fields: `(136,143,69,41)`, `(215,143,69,41)`,
   `(294,143,69,41)`, radius `8`, fill `#1A1A1A`.
-- Parameter Set button: `(140,209,100,36)`, fill `#13506C`, radius `8`.
+- Parameter Set button: `(140,209,100,36)`, fill `#0088FF`, radius `8`.
 - Parameter Cancel button: `(260,209,100,36)`, fill `#1A1A1A`, radius `8`.
   Both have a small dark shadow. Parameter text is `#FFFFF3`.
 - Floating default/Idle surface in `States.png`: `(35,62,200,60)`.
@@ -71,6 +71,20 @@ separate, non-modal native top-level window; the content remains `500×300`.
   `(59,405)` through exclusive `(213,439)`. Antialiased bounds are slightly wider.
 
 ## Fonts and fidelity limits
+
+The Settings window is verified against live Figma node `142:18` (Settings
+Page) and `Codex References/Settings Page.png`: 300×300, background `#2A2D34`.
+Checkbox rows start at `(30,20)` and `(30,64)` with height 44; indicators are
+22×22 with a 3px `#575957` border, 4px radius, and 8px label gap. Labels use
+Arimo Regular 16px, `#DDDDDD`. Exit and Save occupy `(50,250,90,30)` and
+`(160,250,90,30)`, radius 8, fills `#8E8E93` and `#0088FF`, with Inter Bold
+20px white text. The checked state reuses `check.png`.
+
+Arimo and Inter are bundled from the official Google Fonts repository
+(`ofl/arimo/Arimo[wght].ttf`, `ofl/inter/Inter[opsz,wght].ttf`), together with
+their SIL Open Font License notices. These font families are confirmed by
+the live Settings design. The requested blue `#0088FF` also overrides the
+older Add and Set button colors documented in the original exports.
 
 Exact original font family, weight, size, letter spacing, line height, and
 OpenType features cannot be recovered from PNG metadata. The stated 24px bold
