@@ -129,10 +129,10 @@ class SetterWindow(QWidget):
 
     def _arrange_items(self) -> None:
         rows = (len(self.timer_items) + 1) // 2
-        self.timer_content.setFixedSize(500, max(400, rows * 60 + 10))
+        self.timer_content.setFixedSize(500, max(400, rows * 70 + 10))
         for index, item in enumerate(self.timer_items.values()):
             row, column = divmod(index, 2)
-            item.move(27 + column * 210, row * 60)
+            item.move(17 + column * 210, row * 70)
 
     def show_timer(self, timer_id: str) -> None:
         controller = self.timers.get(timer_id)

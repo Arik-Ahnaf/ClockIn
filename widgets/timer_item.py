@@ -22,12 +22,13 @@ class TimerItem(QWidget):
         self.model = controller.model
         self._text_pressed = False
         self._edit_mode = False
-        self.setFixedSize(220, 70)
+        # Leave room above and left of the card for the remove button.
+        self.setFixedSize(230, 80)
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         self.card = QFrame(self)
-        self.card.setGeometry(10, 10, 200, 50)
+        self.card.setGeometry(20, 20, 200, 50)
         self.card.setMouseTracking(True)
         self.card.setStyleSheet(
             f"QFrame {{ background: {BACKGROUND}; border: 1px solid {TEXT};"
@@ -53,8 +54,11 @@ class TimerItem(QWidget):
         self.play_button = AssetButton("play-card.png", "Start timer", 24, self.card)
         self.play_button.move(162, 14)
         self.play_button.clicked.connect(self.play_requested)
-        self.remove_button = AssetButton("remove.png", "Remove timer", 20, self)
-        self.remove_button.move(0, 0)
+        self.remove_button = AssetButton("remove.png", "Remove timer", 30, self)
+        self.remove_button.move(
+            self.card.x() - self.remove_button.width() // 2,
+            self.card.y() - self.remove_button.height() // 2,
+        )
         self.remove_button.clicked.connect(self.remove_requested)
         self.remove_button.hide()
         self.remove_button.raise_()
