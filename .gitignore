@@ -18,7 +18,3 @@ wheels/
 Codex\ References
 AGENTS.md
 PACKAGING.md
-
-# Misc
-tests/
-*.spec
