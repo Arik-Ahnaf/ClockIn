@@ -76,3 +76,15 @@ Refer to the [wiki](https://github.com/Arik-Ahnaf/ClockIn/wiki) for detailed ins
 Report bugs or request features on the
 [issue tracker](https://github.com/Arik-Ahnaf/ClockIn/issues). For installation
 problems, include your operating system, ClockIn version, and any error message.
+
+## Building Windows
+
+On Linux, use GitHub **Actions → Build Windows → Run workflow**, then download
+the `ClockIn-windows` artifact from the successful run. The workflow builds and
+executes the app on `windows-latest`; do not use Wine or Linux PyInstaller to
+build Windows executables. Changes to the Windows workflow also trigger a build.
+
+On Windows, run `./packaging/windows/build.ps1` with `uv` installed. Both methods
+use the same `ClockIn.spec` and produce `dist/ClockIn-<version>-windows-x86_64.zip`.
+Extract the ZIP and keep the complete `ClockIn` folder, including its assets,
+styles, defaults, and runtime libraries, together.
