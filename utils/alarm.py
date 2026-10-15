@@ -52,6 +52,9 @@ class AlarmService(QObject):
             "--id", "alarm-clock-elapsed",
             "--description", "ClockIn timer finished",
             "--property", "application.name=ClockIn",
+            # libcanberra otherwise labels this as an event sound, inheriting
+            # the desktop's sound-effects mute even when alarms are audible.
+            "--property", "media.role=alarm",
         ])
         player.finished.connect(lambda code, status: self._finished(player, code, status))
         player.errorOccurred.connect(lambda error: self._failed(player, error))
@@ -87,4 +90,3 @@ class AlarmService(QObject):
             player.kill()
             player.waitForFinished(1000)
             player.deleteLater()
-

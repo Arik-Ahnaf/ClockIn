@@ -279,7 +279,7 @@ class SetterIntegrationTests(unittest.TestCase):
     def test_design_dimensions_and_card_positions(self) -> None:
         self.assertEqual((self.window.width(), self.window.height()), (500, 500))
         for item, expected in zip(self.window.timer_items.values(),
-                                  (QPoint(37, 40), QPoint(247, 40), QPoint(37, 100)), strict=True):
+                                  (QPoint(37, 50), QPoint(247, 50), QPoint(37, 120)), strict=True):
             self.assertEqual(item.card.mapTo(self.window, QPoint()), expected)
             self.assertEqual((item.card.width(), item.card.height()), (200, 50))
             self.assertEqual(item.display_text.text(), "00:05:00")
