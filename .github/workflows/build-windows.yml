@@ -1,0 +1,36 @@
+name: Build Windows
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/build-windows.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Install locked dependencies
+        run: uv sync --locked --group build
+      - name: Test application
+        run: uv run --no-sync python -m unittest discover -s tests -v
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: Build and verify relocated Windows distribution
+        run: ./packaging/windows/build.ps1
+      - name: Verify source application on Windows
+        run: uv run --no-sync python app.py --smoke-test "$env:RUNNER_TEMP/clockin-source.json"
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ClockIn-windows
+          if-no-files-found: error
+          path: |
+            dist/ClockIn-*-windows-*.zip
+            build/verification/*.json

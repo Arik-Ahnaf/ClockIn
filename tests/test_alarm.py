@@ -56,6 +56,10 @@ class AlarmTests(unittest.TestCase):
                 player = next(iter(self.alarm._players))
                 self.assertEqual(player.program(), "canberra-gtk-play")
                 self.assertEqual(player.arguments()[:2], ["--id", "alarm-clock-elapsed"])
+                properties = [value for flag, value in zip(
+                    player.arguments()[::2], player.arguments()[1::2], strict=True,
+                ) if flag == "--property"]
+                self.assertIn("media.role=alarm", properties)
                 env = player.processEnvironment()
                 self.assertEqual(env.value("LD_LIBRARY_PATH"), original or "")
                 self.assertEqual(os.environ["LD_LIBRARY_PATH"], "/bundled")
