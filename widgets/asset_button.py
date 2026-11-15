@@ -12,10 +12,8 @@ class AssetButton(QAbstractButton):
         self, asset: str, label: str, size: int | tuple[int, int], parent: QWidget,
         *, circle: str | None = None, artwork_size: tuple[int, int] | None = None,
         background: str | None = None, radius: int = 8,
-        overlay_asset: str | None = None,
     ) -> None:
         super().__init__(parent)
-        self._overlay = QPixmap(str(ASSETS / overlay_asset)) if overlay_asset else None
         self._circle = circle
         self._background = background
         self._radius = radius
@@ -77,8 +75,6 @@ class AssetButton(QAbstractButton):
             target = QRectF((self.width() - width) / 2, (self.height() - height) / 2, width, height)
         artwork = self._hover_pixmap if self._hovered and not backing else self._pixmap
         painter.drawPixmap(target, artwork, QRectF(artwork.rect()))
-        if self._overlay is not None:
-            painter.drawPixmap(target, self._overlay, QRectF(self._overlay.rect()))
         if self.hasFocus() or self.isChecked():
             painter.setPen(QPen(QColor(TEXT), 1, Qt.PenStyle.SolidLine if self.isChecked() else Qt.PenStyle.DotLine))
             painter.setBrush(Qt.BrushStyle.NoBrush)

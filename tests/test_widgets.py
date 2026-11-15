@@ -90,12 +90,19 @@ class FloatingInteractionTests(unittest.TestCase):
             self.assertEqual(window.controls_open, expected)
         self.controller.start()
         old_position = window.pos()
-        QTest.mouseClick(window.pause_button, Qt.MouseButton.LeftButton)
+        QTest.mouseClick(window.play_button, Qt.MouseButton.LeftButton)
         self.assertEqual(self.model.state, TimerState.PAUSED)
+        self.assertEqual(window.play_button._asset_name, "v2-play.svg")
         self.assertFalse(window.is_dragging)
         self.assertEqual(window.pos(), old_position)
         QTest.mouseClick(window.play_button, Qt.MouseButton.LeftButton)
         self.assertEqual(self.model.state, TimerState.RUNNING)
+        self.assertEqual(window.play_button._asset_name, "v2-pause.svg")
+        QTest.mouseClick(window.reset_button, Qt.MouseButton.LeftButton)
+        self.assertEqual(self.model.state, TimerState.IDLE)
+        self.assertEqual(self.model.display_seconds, self.model.duration_seconds)
+        self.assertEqual(window.play_button._asset_name, "v2-play.svg")
+        self.assertFalse(window.is_dragging)
         removed = []
         window.dismiss_requested.connect(lambda: removed.append(True))
         QTest.mouseClick(window.close_button, Qt.MouseButton.LeftButton)
@@ -149,14 +156,14 @@ class FloatingInteractionTests(unittest.TestCase):
         self.assertFalse(self.window.controls_open)
         self.assertEqual(self.window.visual_state, VisualState.DEFAULT)
         self.assertEqual(self.window.size().toTuple(), (270, 80))
-        self.assertFalse(self.window.pause_button.isVisible())
+        self.assertFalse(self.window.play_button.isVisible())
         self.assertFalse(self.window.play_button.isVisible())
         self.assertEqual(self.model.state, TimerState.RUNNING)
 
     def test_button_and_shortcut_presses_restart_inactivity(self) -> None:
         self.window._rollback_timer.setInterval(240)
         for press in (
-            lambda: QTest.mouseClick(self.window.pause_button, Qt.MouseButton.LeftButton),
+            lambda: QTest.mouseClick(self.window.play_button, Qt.MouseButton.LeftButton),
             lambda: QTest.keyClick(self.window, Qt.Key.Key_Space),
         ):
             self.controller.start()
@@ -192,10 +199,10 @@ class FloatingInteractionTests(unittest.TestCase):
         self.assertTrue(self.window.controls_open)
         self.assertEqual(self.window.visual_state, VisualState.DRAGGING)
         mouse(self.window, QEvent.Type.MouseButtonRelease, pointer + QPoint(40, 0))
-        QTest.mousePress(self.window.pause_button, Qt.MouseButton.LeftButton)
+        QTest.mousePress(self.window.play_button, Qt.MouseButton.LeftButton)
         QTest.qWait(180)
         self.assertTrue(self.window.controls_open)
-        QTest.mouseRelease(self.window.pause_button, Qt.MouseButton.LeftButton)
+        QTest.mouseRelease(self.window.play_button, Qt.MouseButton.LeftButton)
         QTest.qWait(180)
         self.assertFalse(self.window.controls_open)
 

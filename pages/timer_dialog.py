@@ -84,7 +84,7 @@ class TimerDialog(QDialog):
         )
         self.objective_field.setText(objective)
         self.set_button = QPushButton(self)
-        self.set_button.setIcon(QIcon(str(ASSETS / "dialog-save-button.svg")))
+        self.set_button.setIcon(QIcon(str(ASSETS / "save-btn.svg")))
         self.set_button.setAccessibleName("Set timer")
         self.set_button.setGeometry(85, 219, 110, 46)
         self.set_button.setDefault(True)
@@ -100,6 +100,19 @@ class TimerDialog(QDialog):
                 "QPushButton { background: transparent; border: none; padding: 0; }"
                 f"QPushButton:focus {{ border: 1px dotted {TEXT}; border-radius: 8px; }}"
             )
+        self.set_button.setGeometry(90, 224, 100, 36)
+        self.set_button.setIconSize(QSize(25, 25))
+        self.set_button.setStyleSheet(
+            f"QPushButton {{ background: {SURFACE}; border: none; border-radius: 8px; }}"
+            f"QPushButton:focus {{ border: 1px dotted {TEXT}; }}"
+            "QPushButton:disabled { background: #666666; }"
+        )
+        from PySide6.QtWidgets import QGraphicsDropShadowEffect
+        shadow = QGraphicsDropShadowEffect(self.set_button)
+        shadow.setOffset(0, 0)
+        shadow.setBlurRadius(10)
+        shadow.setColor(QColor(0, 0, 0, 64))
+        self.set_button.setGraphicsEffect(shadow)
         self.set_button.clicked.connect(self.accept)
         cancel.clicked.connect(self.reject)
         QShortcut(QKeySequence("Escape"), self, activated=self.reject)

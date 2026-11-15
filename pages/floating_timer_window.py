@@ -62,16 +62,16 @@ class FloatingTimerWindow(QWidget):
 
         self.play_button = AssetButton("v2-play.svg", "Start / resume timer", 36, self)
         self.play_button.move(109, 76)
-        self.play_button.clicked.connect(controller.start)
-        self.pause_button = AssetButton("v2-pause.svg", "Pause timer", 36, self)
-        self.pause_button.move(155, 76)
-        self.pause_button.clicked.connect(controller.pause)
+        self.play_button.clicked.connect(controller.toggle)
+        self.reset_button = AssetButton("reset-btn.svg", "Stop and reset timer", 36, self)
+        self.reset_button.move(155, 76)
+        self.reset_button.clicked.connect(controller.reset)
         self.close_button = AssetButton(
-            "v2-close-first.svg", "Close and reset timer", 24, self,
-            artwork_size=(15, 15), overlay_asset="v2-close-second.svg",
+            "cancel-btn.svg", "Close and reset timer", 24, self,
+            artwork_size=(15, 15),
         )
         self.close_button.clicked.connect(self.dismiss_requested)
-        for widget in (self, self.play_button, self.pause_button, self.close_button):
+        for widget in (self, self.play_button, self.reset_button, self.close_button):
             widget.installEventFilter(self)
         self.model.changed.connect(self._sync_model)
         QShortcut(QKeySequence("Space"), self, activated=controller.toggle)
@@ -114,6 +114,9 @@ class FloatingTimerWindow(QWidget):
         self._update_visual_state()
 
     def _sync_model(self) -> None:
+        running = self.model.state is TimerState.RUNNING
+        self.play_button.set_asset("v2-pause.svg" if running else "v2-play.svg")
+        self.play_button.set_label("Pause timer" if running else "Start / resume timer")
         self.display_text = time_text(self.model.display_seconds, compact=True)
         self.setAccessibleName(f"Timer {self.display_text}, {self.model.state.name.lower()}")
         self.update()
@@ -128,7 +131,7 @@ class FloatingTimerWindow(QWidget):
             self.visual_state = VisualState.DEFAULT
         self._expanded = self._is_dragging or self._controls_open
         self.setFixedSize(*(EXPANDED_SIZE if self._expanded else FLOAT_SIZE))
-        self.pause_button.setVisible(self._expanded)
+        self.reset_button.setVisible(self._expanded)
         self.play_button.setVisible(self._expanded)
         self.close_button.move(self.width() - 28, 6 if self.visual_state is VisualState.HOVER and not self._expanded else 4)
         minimized = not self._expanded and self.visual_state is VisualState.DEFAULT
@@ -145,7 +148,7 @@ class FloatingTimerWindow(QWidget):
             self._rollback_timer.start()
 
     def _rollback_to_idle(self) -> None:
-        if self._is_dragging or self.pause_button.isDown() or self.play_button.isDown() or self.close_button.isDown():
+        if self._is_dragging or self.reset_button.isDown() or self.play_button.isDown() or self.close_button.isDown():
             self._update_rollback_timer(restart=True)
             return
         self._controls_open = False

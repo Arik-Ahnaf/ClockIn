@@ -220,10 +220,10 @@ class Validation:
         self.check(floating.controls_open and floating.size().toTuple() == (300, 120),
                    "Surface click keeps the expanded controls open")
         self.move(blank)
-        self.check(floating.controls_open and floating.pause_button.isVisible(),
+        self.check(floating.controls_open and floating.play_button.isVisible(),
                    "Controls remain usable after the pointer leaves")
         self.screenshot(floating, "floating-controls")
-        pause_point = floating.pause_button.mapToGlobal(floating.pause_button.rect().center())
+        pause_point = floating.play_button.mapToGlobal(floating.play_button.rect().center())
         position_before = floating.pos()
         self.move(pause_point)
         self.press()

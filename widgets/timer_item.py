@@ -10,28 +10,11 @@ from utils.design import BACKGROUND, MENU_STYLE, TEXT, ERROR, font, time_text
 from widgets.asset_button import AssetButton
 
 
-class RemoveButton(QAbstractButton):
-    """Figma's 20px red circle and 8×3px minus, drawn as native shapes."""
+class RemoveButton(AssetButton):
+    """Exported remove control, including its original shadow padding."""
 
     def __init__(self, parent: QWidget) -> None:
-        super().__init__(parent)
-        self.setFixedSize(20, 20)
-        self.setAccessibleName("Remove timer")
-        self.setToolTip("Remove timer")
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-        shadow = QGraphicsDropShadowEffect(self)
-        shadow.setOffset(0, 0)
-        shadow.setBlurRadius(4)
-        shadow.setColor(QColor(0, 0, 0, 64))
-        self.setGraphicsEffect(shadow)
-
-    def paintEvent(self, event) -> None:
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(ERROR))
-        painter.drawEllipse(self.rect())
-        painter.fillRect(6, 8, 8, 3, QColor(TEXT))
+        super().__init__("remove-btn.svg", "Remove timer", 32, parent)
 
 
 class TimerItem(QWidget):

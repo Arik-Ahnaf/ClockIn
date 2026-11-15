@@ -15,18 +15,15 @@ Qt logical pixels without manual device-pixel-ratio multiplication.
 | `play-btn.svg` | Timer card play control, 91:25 | 24×24 |
 | `setter-edit.svg` | Toolbar pencil, 165:27 | 23×24 |
 | `setter-add.svg` | Toolbar add, 165:30 | 24×24 |
-| `dialog-save-button.svg` | Parameter save button, 23:45 | 110×46 including shadow |
+| `save-btn.svg` | Parameter save button icon | 25×25 |
 | `dialog-cancel-button.svg` | Parameter cancel button, 23:47 | 110×46 including shadow |
 | `v2-play.svg` | Expanded timer play, 196:30 | 36×36 |
-| `v2-pause.svg` | Expanded timer pause, 196:29 | 36×36 |
-| `v2-close-first.svg`, `v2-close-second.svg` | Cancel diagonals, 197:12–13 | 15×15 each, overlaid in a 24×24 control |
+| `v2-pause.svg` | Play/pause toggle while running | 36×36 |
+| `reset-btn.svg` | Stop and reset countdown | 36×36 |
+| `remove-btn.svg` | Remove timer, including shadow | 32×32 |
+| `cancel-btn.svg` | Floating timer close/reset icon | 15×15, centered in a 24×24 control |
 
-The new setter/dialog/V2 exports are unmodified Figma SVGs. The supplied 86px
-`fa-play-circle.svg` and `fa-pause-circle.svg` are retained for future stopwatch
-work; V2 uses the exact 36px exports instead. Supplied raster icons and older
-artwork remain available, but the revamped UI does not depend on removed icons.
-The edit-card remove button uses native shapes: a 20px red circle and 8×3px minus,
-as specified by Figma node 78:16.
+Controls use local SVG artwork. The remaining PNG checkmark is used by settings and menus; the application icon uses ICO. Unused legacy icons have been removed.
 
 ## Typography and colors
 
