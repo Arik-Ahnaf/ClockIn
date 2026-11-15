@@ -537,6 +537,33 @@ class SetterIntegrationTests(unittest.TestCase):
         self.window.close()
         self.assertFalse(self.window.parameter_windows)
 
+    def test_objective_limit_save_edit_clear_and_floating_only(self) -> None:
+        self.window._new_timer()
+        dialog = self.window.parameter_windows[None]
+        dialog.objective_field.setText("x" * 43)
+        self.assertEqual(dialog.objective_field.text(), "x" * 42)
+        dialog.objective_field.setText("Write chapter")
+        dialog.accept()
+        timer_id = next(reversed(self.window.timers))
+        self.window.show_timer(timer_id)
+        floating = self.window.floating_windows[timer_id]
+        self.assertEqual(floating.model.objective, "Write chapter")
+        self.assertEqual(self.store.load()[-1].objective, "Write chapter")
+        self.assertEqual(self.window.timer_items[timer_id].display_text.text(), "00:05:00")
+        before = floating.grab().toImage()
+        self.window.configure_timer(timer_id)
+        edit = self.window.parameter_windows[timer_id]
+        self.assertEqual(edit.objective_field.text(), "Write chapter")
+        edit.objective_field.setText("   ")
+        edit.accept()
+        self.assertEqual(floating.model.objective, "")
+        self.assertEqual(self.store.load()[-1].objective, "")
+        after = floating.grab().toImage()
+        self.assertNotEqual(before.copy(0, 52, 270, 18), after.copy(0, 52, 270, 18))
+        for x in range(10, 260):
+            for y in range(52, 70):
+                self.assertEqual(after.pixelColor(x, y).name(), "#282a36")
+
     def test_dialog_rejects_zero_and_returns_exact_duration(self) -> None:
         dialog = TimerDialog(0, self.window)
         self.assertFalse(dialog.set_button.isEnabled())

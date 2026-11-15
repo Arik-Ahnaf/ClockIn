@@ -8,6 +8,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from models import MAX_DURATION_SECONDS
+from models.timer_model import TimerModel
 from utils.paths import is_bundled, resource_path, user_data_directory
 
 
@@ -22,6 +23,7 @@ class TimerStoreError(Exception):
 class TimerRecord:
     timer_id: str
     duration_seconds: int
+    objective: str = ""
 
 
 class TimerStore:
@@ -108,5 +110,6 @@ class TimerStore:
             if type(duration) is not int or not 1 <= duration <= MAX_DURATION_SECONDS:
                 raise ValueError(f"timer {index} duration_seconds must be an integer from 1 to {MAX_DURATION_SECONDS}")
             identities.add(timer_id)
-            result.append(TimerRecord(timer_id, duration))
+            objective = TimerModel.validate_objective(entry.get("objective", ""))
+            result.append(TimerRecord(timer_id, duration, objective))
         return result

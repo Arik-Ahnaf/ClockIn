@@ -9,6 +9,9 @@ from uuid import uuid4
 from PySide6.QtCore import QObject, Signal, Slot
 
 
+MAX_OBJECTIVE_LENGTH = 42
+
+
 MAX_DURATION_SECONDS = 99 * 3600 + 59 * 60 + 59
 
 
@@ -37,15 +40,29 @@ class TimerModel(QObject):
         *,
         clock: Callable[[], float] = monotonic,
         timer_id: str | None = None,
+        objective: str = "",
     ) -> None:
         super().__init__(parent)
         self._validate_duration(duration_seconds)
         self.timer_id = timer_id if timer_id is not None else uuid4().hex
+        self._objective = self.validate_objective(objective)
         self._duration_seconds = duration_seconds
         self._remaining_seconds = float(duration_seconds)
         self._state = TimerState.IDLE
         self._clock = clock
         self._deadline: float | None = None
+
+    @staticmethod
+    def validate_objective(objective: str) -> str:
+        if not isinstance(objective, str):
+            raise ValueError("Timer objective must be text.")
+        if len(objective) > MAX_OBJECTIVE_LENGTH:
+            raise ValueError("Timer objective must be at most 42 characters.")
+        return objective.strip()
+
+    @property
+    def objective(self) -> str:
+        return self._objective
 
     @property
     def duration_seconds(self) -> int:
@@ -94,10 +111,11 @@ class TimerModel(QObject):
         self._state = TimerState.IDLE
         self.changed.emit()
 
-    @Slot(int)
-    def configure(self, duration_seconds: int) -> None:
+    def configure(self, duration_seconds: int, objective: str | None = None) -> None:
         """Replace the duration and return the timer to its idle state."""
         self._validate_duration(duration_seconds)
+        if objective is not None:
+            self._objective = self.validate_objective(objective)
         self._duration_seconds = duration_seconds
         self.reset()
 

@@ -18,7 +18,6 @@ ERROR = THEME["error-color"]
 ACCENT = THEME["primary-color"]
 ADD_BUTTON = ACCENT
 FONT_FAMILY = "IBM Plex Sans"
-OBJECTIVE = "Add Stopwatch Feature"
 OBJECTIVE_COLOR = THEME["off-white"]
 SETTER_SIZE = (500, 500)
 CARD_SIZE = (200, 50)

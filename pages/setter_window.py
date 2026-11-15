@@ -87,17 +87,17 @@ class SetterWindow(QWidget):
         for record in saved_timers:
             self._create_timer(record)
 
-    def add_timer(self, duration: int = 300) -> TimerController:
-        record = TimerRecord(uuid4().hex, duration)
+    def add_timer(self, duration: int = 300, objective: str = "") -> TimerController:
+        record = TimerRecord(uuid4().hex, duration, TimerModel.validate_objective(objective))
         self.store.save(self._timer_records() + [record])
         return self._create_timer(record)
 
     def _timer_records(self) -> list[TimerRecord]:
-        return [TimerRecord(timer_id, controller.model.duration_seconds)
+        return [TimerRecord(timer_id, controller.model.duration_seconds, controller.model.objective)
                 for timer_id, controller in self.timers.items()]
 
     def _create_timer(self, record: TimerRecord) -> TimerController:
-        model = TimerModel(record.duration_seconds, self, timer_id=record.timer_id)
+        model = TimerModel(record.duration_seconds, self, timer_id=record.timer_id, objective=record.objective)
         model.finished.connect(self.alarm.play)
         controller = TimerController(model, self)
         timer_id = model.timer_id
@@ -191,7 +191,9 @@ class SetterWindow(QWidget):
     def _show_parameter_window(self, timer_id: str | None, duration: int) -> None:
         dialog = self.parameter_windows.get(timer_id)
         if dialog is None:
-            dialog = TimerDialog(duration, self)
+            dialog = TimerDialog(duration, self, objective=(
+                self.timers[timer_id].model.objective if timer_id is not None else ""
+            ))
             self.parameter_windows[timer_id] = dialog
             dialog.finished.connect(
                 lambda result: self._finish_parameter_window(timer_id, dialog, result)
@@ -205,13 +207,13 @@ class SetterWindow(QWidget):
         try:
             if result == QDialog.DialogCode.Accepted:
                 if timer_id is None:
-                    controller = self.add_timer(dialog.duration_seconds)
+                    controller = self.add_timer(dialog.duration_seconds, dialog.objective)
                     self.scroll_area.ensureWidgetVisible(self.timer_items[controller.model.timer_id])
                 elif timer_id in self.timers:
-                    records = [TimerRecord(record.timer_id, dialog.duration_seconds)
+                    records = [TimerRecord(record.timer_id, dialog.duration_seconds, dialog.objective)
                                if record.timer_id == timer_id else record for record in self._timer_records()]
                     self.store.save(records)
-                    self.timers[timer_id].model.configure(dialog.duration_seconds)
+                    self.timers[timer_id].model.configure(dialog.duration_seconds, dialog.objective)
         except TimerStoreError as exc:
             self._message("Unable to save timers", str(exc))
         finally:

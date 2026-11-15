@@ -26,6 +26,15 @@ class TimerStoreTests(unittest.TestCase):
         self.assertEqual(TimerStore(self.path).load(), records)
         self.assertEqual(list(self.path.parent.glob("*.tmp")), [])
 
+    def test_objectives_round_trip_and_invalid_values_preserve_database(self) -> None:
+        records = [TimerRecord("one", 60, "x" * 42), TimerRecord("two", 120)]
+        self.store.save(records)
+        self.assertEqual(self.store.load(), records)
+        for objective in ("x" * 43, None, 42):
+            with self.assertRaises(TimerStoreError):
+                self.store.save([TimerRecord("bad", 60, objective)])
+            self.assertEqual(self.store.load(), records)
+
     def test_reads_file_again_instead_of_caching(self) -> None:
         self.store.save([TimerRecord("one", 5)])
         self.assertEqual(self.store.load(), [TimerRecord("one", 5)])

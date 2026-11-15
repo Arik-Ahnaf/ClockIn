@@ -10,7 +10,7 @@ from controllers import TimerController
 from models import TimerState
 from utils.design import (
     BACKGROUND, EXPANDED_SIZE, FLOAT_SIZE, FLOAT_TEXT,
-    MENU_STYLE, OBJECTIVE, OBJECTIVE_COLOR, font, time_text,
+    MENU_STYLE, OBJECTIVE_COLOR, font, time_text,
 )
 from widgets.asset_button import AssetButton
 
@@ -278,6 +278,7 @@ class FloatingTimerWindow(QWidget):
         painter.setPen(QColor(FLOAT_TEXT))
         painter.setFont(font(40, True, family="IBM Plex Sans Condensed"))
         painter.drawText(QRectF(0, 0, self.width(), 52), Qt.AlignmentFlag.AlignCenter, self.display_text)
-        painter.setPen(QColor(OBJECTIVE_COLOR))
-        painter.setFont(font(14, True, family="IBM Plex Sans Condensed"))
-        painter.drawText(QRectF(0, 52, self.width(), 18), Qt.AlignmentFlag.AlignCenter, OBJECTIVE)
+        if self.model.objective:
+            painter.setPen(QColor(OBJECTIVE_COLOR))
+            painter.setFont(font(14, True, family="IBM Plex Sans Condensed"))
+            painter.drawText(QRectF(0, 52, self.width(), 18), Qt.AlignmentFlag.AlignCenter, self.model.objective)
