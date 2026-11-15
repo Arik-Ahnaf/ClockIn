@@ -1,13 +1,37 @@
 """A fixed-size setter card observing a shared timer controller."""
 
-from PySide6.QtCore import QEvent, Qt, Signal
-from PySide6.QtGui import QColor, QContextMenuEvent, QKeyEvent, QMouseEvent
-from PySide6.QtWidgets import QFrame, QGraphicsDropShadowEffect, QLabel, QMenu, QWidget
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QColor, QContextMenuEvent, QKeyEvent, QMouseEvent, QPainter
+from PySide6.QtWidgets import QAbstractButton, QFrame, QGraphicsDropShadowEffect, QLabel, QMenu, QWidget
 
 from controllers import TimerController
 from models import TimerState
-from utils.design import BACKGROUND, MENU_STYLE, TEXT, font, time_text
+from utils.design import BACKGROUND, MENU_STYLE, TEXT, ERROR, font, time_text
 from widgets.asset_button import AssetButton
+
+
+class RemoveButton(QAbstractButton):
+    """Figma's 20px red circle and 8×3px minus, drawn as native shapes."""
+
+    def __init__(self, parent: QWidget) -> None:
+        super().__init__(parent)
+        self.setFixedSize(20, 20)
+        self.setAccessibleName("Remove timer")
+        self.setToolTip("Remove timer")
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setOffset(0, 0)
+        shadow.setBlurRadius(4)
+        shadow.setColor(QColor(0, 0, 0, 64))
+        self.setGraphicsEffect(shadow)
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(ERROR))
+        painter.drawEllipse(self.rect())
+        painter.fillRect(6, 8, 8, 3, QColor(TEXT))
 
 
 class TimerItem(QWidget):
@@ -23,16 +47,16 @@ class TimerItem(QWidget):
         self._text_pressed = False
         self._edit_mode = False
         # Leave room above and left of the card for the remove button.
-        self.setFixedSize(230, 80)
+        self.setFixedSize(220, 70)
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         self.card = QFrame(self)
-        self.card.setGeometry(20, 20, 200, 50)
+        self.card.setGeometry(10, 10, 200, 50)
         self.card.setMouseTracking(True)
         self.card.setStyleSheet(
-            f"QFrame {{ background: {BACKGROUND}; border: 1px solid {TEXT};"
-            " border-radius: 4px; }"
+            f"QFrame {{ background: {BACKGROUND}; border: 2px solid {TEXT};"
+            " border-radius: 8px; }"
         )
         shadow = QGraphicsDropShadowEffect(self.card)
         shadow.setOffset(0, 4)
@@ -41,20 +65,19 @@ class TimerItem(QWidget):
         self.card.setGraphicsEffect(shadow)
         self._shadow = shadow
         self._shadow.setEnabled(False)
-        self.card.installEventFilter(self)
 
         self.display_text = QLabel(self.card)
-        self.display_text.setGeometry(18, 10, 135, 32)
-        self.display_text.setFont(font(24, True, family="Adwaita Sans"))
+        self.display_text.setGeometry(18, 8, 135, 32)
+        self.display_text.setFont(font(24, True, family="IBM Plex Sans"))
         self.display_text.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        self.display_text.setStyleSheet("background: transparent; color: #FFFFFF; border: none;")
+        self.display_text.setStyleSheet(f"background: transparent; color: {TEXT}; border: none;")
         self.display_text.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.display_text.setToolTip("Click to edit this timer")
 
-        self.play_button = AssetButton("play-card.png", "Start timer", 24, self.card)
-        self.play_button.move(162, 14)
+        self.play_button = AssetButton("play-btn.svg", "Start timer", 24, self.card)
+        self.play_button.move(161, 14)
         self.play_button.clicked.connect(self.play_requested)
-        self.remove_button = AssetButton("remove.png", "Remove timer", 30, self)
+        self.remove_button = RemoveButton(self)
         self.remove_button.move(
             self.card.x() - self.remove_button.width() // 2,
             self.card.y() - self.remove_button.height() // 2,
@@ -79,17 +102,12 @@ class TimerItem(QWidget):
 
     def set_edit_mode(self, enabled: bool) -> None:
         self._edit_mode = enabled
+        self._shadow.setEnabled(enabled)
+        self.display_text.move(18, 9 if enabled else 8)
+        self.play_button.move(162 if enabled else 161, 14)
         self.remove_button.setVisible(enabled)
         if enabled:
             self.remove_button.raise_()
-
-    def eventFilter(self, watched, event) -> bool:
-        if watched is self.card:
-            if event.type() == QEvent.Type.Enter:
-                self._shadow.setEnabled(True)
-            elif event.type() in (QEvent.Type.Leave, QEvent.Type.Hide):
-                self._shadow.setEnabled(False)
-        return super().eventFilter(watched, event)
 
     def _over_text(self, event: QMouseEvent) -> bool:
         position = self.display_text.mapFrom(self, event.position().toPoint())

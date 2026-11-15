@@ -29,7 +29,7 @@ from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QWidget
 
 from models import TimerState
-from utils.design import ASSETS, FLOAT_TEXT, MUTED, SURFACE, font
+from utils.design import ASSETS, FLOAT_TEXT, MUTED, BACKGROUND, font
 from utils.timer_store import TimerRecord, TimerStore
 from pages.floating_timer_window import VisualState
 from pages.setter_window import SetterWindow
@@ -145,11 +145,11 @@ class Validation:
         self.move(blank)
         self.check(floating.model is self.setter.timers[timer_ids[0]].model,
                    "Setter and floating timer share one model")
-        self.check(floating.size().toTuple() == (200, 60), "Default floating window is fixed 200 × 60")
+        self.check(floating.size().toTuple() == (270, 80), "Default floating window is fixed 270 × 80")
         self.check(floating.minimumSize() == floating.maximumSize(), "Floating window cannot be resized")
         self.check(floating.visual_state is VisualState.DEFAULT, "Pointer outside resolves DEFAULT")
-        self.check(self.text_color_present(floating, MUTED), "Default text uses the Figma muted color")
-        self.check(floating.grab().toImage().pixelColor(2, 2).name().upper() == SURFACE,
+        self.check(abs(floating.windowOpacity() - 0.7) < 0.01, "Default applies 70% opacity to the whole window")
+        self.check(floating.grab().toImage().pixelColor(10, 10).name().upper() == BACKGROUND,
                    "Floating surface uses the Figma background color")
         self.screenshot(floating, "floating-default")
 
@@ -157,8 +157,8 @@ class Validation:
         self.check(floating.visual_state is VisualState.HOVER, "Native pointer enter resolves HOVER", {"geometry": floating.geometry().getRect(), "pointer": self.native.pointer(), "state": str(floating.visual_state)})
         self.check(self.text_color_present(floating, FLOAT_TEXT), "Hover text uses the Figma active color")
         hover_image = floating.grab().toImage().scaled(floating.size())
-        self.check(hover_image.pixelColor(2, 57).alpha() == 255 and hover_image.pixelColor(2, 59).alpha() == 0,
-                   "Hover paints exactly 58 pixels inside the stable 60-pixel input window")
+        self.check(hover_image.pixelColor(0, 0).alpha() == 0 and floating.windowOpacity() == 1.0,
+                   "Hover preserves rounded transparent corners at full opacity")
         self.screenshot(floating, "floating-hover")
         self.move(blank)
         self.check(floating.visual_state is VisualState.DEFAULT, "Native pointer leave returns DEFAULT")
@@ -170,7 +170,7 @@ class Validation:
         self.press()
         self.check(floating.is_dragging and floating.visual_state is VisualState.DRAGGING,
                    "Native press over text immediately enters DRAGGING")
-        self.check(floating.size().toTuple() == (270, 130), "Dragging uses the Figma 270 × 130 frame")
+        self.check(floating.size().toTuple() == (300, 120), "Dragging uses the Figma 300 × 120 frame")
         self.screenshot(floating, "floating-dragging")
         actual_offset = QCursor.pos() - origin
         # Explicitly deliver enter/leave while the *native* grab is held. A
@@ -217,7 +217,7 @@ class Validation:
         self.move(floating.pos() + QPoint(90, 25))
         self.press()
         self.release()
-        self.check(floating.controls_open and floating.size().toTuple() == (270, 130),
+        self.check(floating.controls_open and floating.size().toTuple() == (300, 120),
                    "Surface click keeps the expanded controls open")
         self.move(blank)
         self.check(floating.controls_open and floating.pause_button.isVisible(),
@@ -234,6 +234,7 @@ class Validation:
         paused_remaining = floating.model.remaining_seconds
         self.wait(250)
         self.check(floating.model.remaining_seconds == paused_remaining, "Paused countdown remains frozen")
+        self.move(floating.play_button.mapToGlobal(floating.play_button.rect().center()))
         self.press()
         self.release()
         self.check(floating.model.state is TimerState.RUNNING and not floating.is_dragging,
@@ -244,7 +245,7 @@ class Validation:
         self.move(floating.pos() + QPoint(90, 25))
         self.press()
         self.release()
-        self.check(not floating.controls_open and floating.size().toTuple() == (200, 60),
+        self.check(not floating.controls_open and floating.size().toTuple() == (270, 80),
                    "Second surface click returns to compact controls")
 
         self.setter.show_timer(timer_ids[1])
@@ -276,9 +277,9 @@ class Validation:
                    "Independent X11 window avoids utility-window group minimization")
         hints = subprocess.check_output(["xprop", "-id", hex(native_id), "WM_NORMAL_HINTS"], text=True)
         self.evidence["floating_size_hints"] = hints
-        self.check(f"program specified minimum size: {round(200 * floating.devicePixelRatioF())} by {round(60 * floating.devicePixelRatioF())}" in hints
-                   and f"program specified maximum size: {round(200 * floating.devicePixelRatioF())} by {round(60 * floating.devicePixelRatioF())}" in hints,
-                   "Native minimum and maximum dimensions are fixed at 200 × 60")
+        self.check(f"program specified minimum size: {round(270 * floating.devicePixelRatioF())} by {round(80 * floating.devicePixelRatioF())}" in hints
+                   and f"program specified maximum size: {round(270 * floating.devicePixelRatioF())} by {round(80 * floating.devicePixelRatioF())}" in hints,
+                   "Native minimum and maximum dimensions are fixed at 270 × 80")
         motif = re.search(r"_MOTIF_WM_HINTS.*?=\s*(.*)", props)
         motif_values = [int(value.strip(), 0) for value in motif.group(1).split(",")] if motif else []
         self.check(len(motif_values) >= 3 and motif_values[0] & 2 and motif_values[2] == 0,
@@ -313,13 +314,15 @@ class Validation:
         other_rect = self.native.geometry(other_id)
         x, y, width, height = other_rect
         screen.grabWindow(0, x, y, width, height).save(str(self.output / "native-always-on-top.png"))
-        sampled = screen.grabWindow(0, floating.x() + 3, floating.y() + 3, 1, 1).toImage().pixelColor(0, 0)
+        floating.set_transparent_background(False)
+        self.wait()
+        sampled = screen.grabWindow(0, floating.x() + 10, floating.y() + 10, 1, 1).toImage().pixelColor(0, 0)
         if sampled.name() == "#000000":
             # XWayland cannot read the Wayland compositor root framebuffer.
             self.evidence["desktop_framebuffer_capture"] = "Unavailable (black XWayland root); native stacking verified above."
             print("SKIP: Compositor framebuffer capture is unavailable under XWayland", flush=True)
         else:
-            self.check(sampled.name().upper() == SURFACE,
+            self.check(sampled.name().upper() == BACKGROUND,
                        "Desktop framebuffer shows timer pixels over unrelated app", sampled.name())
 
         self.check(floating.windowHandle().transientParent() is None,
@@ -351,21 +354,22 @@ class Validation:
         self.setter.activateWindow()
         floating.raise_()
         self.wait()
-        # Delete the second timer via its real button; keep the first intact.
+        # Close/reset the second floating widget via its real button.
         self.setter.show_timer(timer_ids[1])
         second.move(base + QPoint(800, 370))
         self.wait()
         self.move(second.pos() + QPoint(90, 25))
         self.press()
         self.release()
-        delete_point = second.remove_button.mapToGlobal(second.remove_button.rect().center())
+        delete_point = second.close_button.mapToGlobal(second.close_button.rect().center())
         self.move(delete_point)
         self.press()
-        self.check(not second.is_dragging, "Delete button press does not start dragging")
+        self.check(not second.is_dragging, "Close button press does not start dragging")
         self.release()
-        self.check(timer_ids[1] not in self.setter.timers and timer_ids[1] not in self.setter.floating_windows
+        self.check(timer_ids[1] in self.setter.timers and timer_ids[1] not in self.setter.floating_windows
+                   and self.setter.timers[timer_ids[1]].model.state is TimerState.IDLE
                    and floating.isVisible() and floating.model.state is TimerState.RUNNING,
-                   "Delete removes only its own timer and floating window")
+                   "Close resets its timer and destroys only its floating widget")
 
     def close(self) -> None:
         self.native.button(False)

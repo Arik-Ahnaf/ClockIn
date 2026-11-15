@@ -5,15 +5,15 @@ from uuid import uuid4
 from PySide6.QtCore import QPoint, QSettings, Qt, QUrl
 from PySide6.QtGui import QAction, QCloseEvent, QDesktopServices, QKeySequence
 from PySide6.QtWidgets import (
-    QDialog, QFrame, QMessageBox, QPushButton, QScrollArea, QWidget,
+    QDialog, QFrame, QMessageBox, QScrollArea, QWidget,
 )
 
 from controllers import TimerController
 from models import TimerModel
 from utils.alarm import AlarmService
-from utils.design import ACCENT, ADD_BUTTON, BACKGROUND, SETTER_SIZE, SURFACE, TEXT, font
+from utils.design import ACCENT, BACKGROUND, SETTER_SIZE, SURFACE, TEXT, font
 from utils.timer_store import TimerRecord, TimerStore, TimerStoreError
-from utils.paths import stylesheet
+from utils.design import MAIN_STYLE
 from widgets.asset_button import AssetButton
 from widgets.timer_item import TimerItem
 from pages.floating_timer_window import FloatingTimerWindow
@@ -30,7 +30,7 @@ class SetterWindow(QWidget):
         self.alarm = AlarmService(self)
         self.setWindowTitle("ClockIn")
         self.setFixedSize(*SETTER_SIZE)
-        self.setStyleSheet(stylesheet("main"))
+        self.setStyleSheet(MAIN_STYLE)
         self.timers: dict[str, TimerController] = {}
         self.floating_windows: dict[str, FloatingTimerWindow] = {}
         self.timer_items: dict[str, TimerItem] = {}
@@ -41,7 +41,7 @@ class SetterWindow(QWidget):
         self.edit_mode = False
 
         self.scroll_area = QScrollArea(self)
-        self.scroll_area.setGeometry(0, 30, 500, 400)
+        self.scroll_area.setGeometry(0, 66, 500, 434)
         self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
         self.scroll_area.setWidgetResizable(False)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -55,7 +55,7 @@ class SetterWindow(QWidget):
             "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }"
         )
         self.timer_content = QWidget()
-        self.timer_content.setFixedSize(500, 400)
+        self.timer_content.setFixedSize(500, 434)
         self.scroll_area.setWidget(self.timer_content)
 
         new_action = QAction("New timer", self)
@@ -63,43 +63,29 @@ class SetterWindow(QWidget):
         new_action.triggered.connect(self._new_timer)
         self.addAction(new_action)
 
-        self.settings_button = self._menu_button("Settings", 10, 73)
-        self.settings_button.clicked.connect(self._show_settings)
-        self.about_button = self._menu_button("About", 104, 55)
-        self.about_button.clicked.connect(self._show_about)
-        self.help_button = self._menu_button("Help", 178, 43)
-        self.help_button.clicked.connect(self._show_help)
-
-        self.button_section = QWidget(self)
-        self.button_section.setGeometry(0, 430, 500, 70)
-        self.edit_button = AssetButton(
-            "edit.png", "Edit timers", (100, 50), self.button_section,
-            background=SURFACE, artwork_size=(30, 30),
-        )
-        self.edit_button.move(140, 10)
+        views = QFrame(self)
+        views.setGeometry(150, 20, 88, 37)
+        views.setStyleSheet(f"background: {SURFACE}; border-radius: 8px;")
+        self.timer_tab = AssetButton("fa-clock.svg", "Timers", (24, 24), views)
+        self.timer_tab.move(12, 6)
+        self.stopwatch_tab = AssetButton("fa-stopwatch.svg", "Stopwatch — coming later", (21, 25), views)
+        self.stopwatch_tab.move(56, 6)
+        self.stopwatch_tab.setEnabled(False)
+        self.button_section = QFrame(self)
+        self.button_section.setGeometry(258, 20, 91, 36)
+        self.button_section.setStyleSheet(f"background: {SURFACE}; border-radius: 8px;")
+        self.edit_button = AssetButton("setter-edit.svg", "Edit timers", (23, 24), self.button_section)
+        self.edit_button.move(12, 6)
         self.edit_button.setCheckable(True)
         self.edit_button.toggled.connect(self._set_edit_mode)
-        self.add_button = AssetButton(
-            "add.png", "Add timer", (100, 50), self.button_section,
-            background=ADD_BUTTON, artwork_size=(30, 30),
-        )
-        self.add_button.move(260, 10)
+        self.add_button = AssetButton("setter-add.svg", "Add timer", 24, self.button_section)
+        self.add_button.move(55, 6)
         self.add_button.clicked.connect(self._new_timer)
+        self.settings_button = AssetButton("fa-cog.svg", "Settings", (23, 24), self)
+        self.settings_button.move(432, 26)
+        self.settings_button.clicked.connect(self._show_settings)
         for record in saved_timers:
             self._create_timer(record)
-
-    def _menu_button(self, text: str, x: int, width: int) -> QPushButton:
-        button = QPushButton(text, self)
-        button.setGeometry(x, 0, width, 30)
-        button.setFont(font(20))
-        button.setCursor(Qt.CursorShape.PointingHandCursor)
-        button.setStyleSheet(
-            "QPushButton { color: #FFFFFF; background: transparent; border: none;"
-            " padding: 0; text-align: left; }"
-            f"QPushButton:focus {{ border-bottom: 1px solid {TEXT}; }}"
-        )
-        button.raise_()
-        return button
 
     def add_timer(self, duration: int = 300) -> TimerController:
         record = TimerRecord(uuid4().hex, duration)
@@ -129,10 +115,10 @@ class SetterWindow(QWidget):
 
     def _arrange_items(self) -> None:
         rows = (len(self.timer_items) + 1) // 2
-        self.timer_content.setFixedSize(500, max(400, rows * 70 + 10))
+        self.timer_content.setFixedSize(500, max(434, rows * 60 + 20))
         for index, item in enumerate(self.timer_items.values()):
             row, column = divmod(index, 2)
-            item.move(17 + column * 210, row * 70)
+            item.move(35 + column * 210, row * 60)
 
     def show_timer(self, timer_id: str) -> None:
         controller = self.timers.get(timer_id)
@@ -145,6 +131,7 @@ class SetterWindow(QWidget):
             window.set_stay_on_top(self.timers_stay_on_top)
             self.destroyed.connect(window.deleteLater)
             window.remove_requested.connect(lambda: self.remove_timer(timer_id))
+            window.dismiss_requested.connect(lambda: self._dismiss_timer(timer_id))
             self.floating_windows[timer_id] = window
             offset = 18 * (len(self.floating_windows) - 1)
             position = self.frameGeometry().topRight() + QPoint(14 + offset, 40 + offset)
@@ -156,6 +143,15 @@ class SetterWindow(QWidget):
             window.move(position)
         controller.start()
         window.restore()
+
+    def _dismiss_timer(self, timer_id: str) -> None:
+        """Reset the shared timer and dispose only its floating view."""
+        window = self.floating_windows.pop(timer_id, None)
+        if window is None:
+            return
+        self.timers[timer_id].reset()
+        window.close()
+        window.deleteLater()
 
     def remove_timer(self, timer_id: str) -> None:
         if timer_id not in self.timers:

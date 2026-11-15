@@ -18,7 +18,7 @@ class ResourcePathTests(unittest.TestCase):
             try:
                 os.chdir(directory)
                 self.assertTrue(resource_path("assets/logo.ico").is_file())
-                self.assertTrue(resource_path("styles/main.qss").is_file())
+                self.assertTrue(resource_path("themes/dracula.json").is_file())
             finally:
                 os.chdir(original)
 

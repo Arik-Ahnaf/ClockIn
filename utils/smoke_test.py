@@ -9,12 +9,13 @@ import traceback
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QFontDatabase, QImage
 from PySide6.QtWidgets import QApplication
+from PySide6.QtSvg import QSvgRenderer
 
 from models import TimerState
 from pages.setter_window import SetterWindow
 from pages.timer_dialog import TimerDialog
-from utils.design import time_text
-from utils.paths import application_directory, is_bundled, resource_path, stylesheet
+from utils.design import time_text, MAIN_STYLE
+from utils.paths import application_directory, is_bundled, resource_path
 from utils.timer_store import TimerStore
 
 
@@ -35,9 +36,11 @@ def run_smoke_test(app: QApplication, report_path: str) -> int:
             check(not app.windowIcon().pixmap(32, 32).isNull(), "application icon loads")
             for path in resource_path("assets").glob("*.png"):
                 check(not QImage(str(path)).isNull(), f"image loads: {path.name}")
+            for path in resource_path("assets").glob("*.svg"):
+                check(QSvgRenderer(str(path)).isValid(), f"SVG loads: {path.name}")
             for path in resource_path("assets/fonts").glob("*.ttf"):
                 check(QFontDatabase.addApplicationFont(str(path)) >= 0, f"font loads: {path.name}")
-            check("#2A2D34" in stylesheet("main"), "external stylesheet loads")
+            check("#282A36" in MAIN_STYLE, "theme styling loads")
             check(json.loads(resource_path("defaults/timers.json").read_text())["timers"] == [],
                   "shipped defaults contain no personal timers")
             report["default_database"] = str(TimerStore().path)
@@ -49,7 +52,7 @@ def run_smoke_test(app: QApplication, report_path: str) -> int:
             window.show()
             app.processEvents()
             check((window.width(), window.height()) == (500, 500), "setter opens at 500x500")
-            check(window.styleSheet() == stylesheet("main"), "setter uses external stylesheet")
+            check(window.styleSheet() == MAIN_STYLE, "setter uses theme styling")
             dialog = TimerDialog(1, window)
             check(not dialog.set_button.icon().pixmap(16, 16).isNull(), "dialog icon loads")
             controller = window.add_timer(1)

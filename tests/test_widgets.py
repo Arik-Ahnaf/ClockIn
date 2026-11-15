@@ -55,7 +55,7 @@ class FloatingInteractionTests(unittest.TestCase):
         pointer = window.pos() + QPoint(80, 30)
         mouse(window, QEvent.Type.MouseButtonPress, pointer, held=True)
         self.assertEqual(window.visual_state, VisualState.DRAGGING)
-        self.assertEqual((window.width(), window.height()), (270, 130))
+        self.assertEqual((window.width(), window.height()), (300, 120))
         QApplication.sendEvent(window, QEvent(QEvent.Type.Leave))
         self.assertEqual(window.visual_state, VisualState.DRAGGING)
         for delta in (QPoint(40, 20), QPoint(-90, 80), QPoint(120, -70)):
@@ -94,11 +94,11 @@ class FloatingInteractionTests(unittest.TestCase):
         self.assertEqual(self.model.state, TimerState.PAUSED)
         self.assertFalse(window.is_dragging)
         self.assertEqual(window.pos(), old_position)
-        QTest.mouseClick(window.pause_button, Qt.MouseButton.LeftButton)
+        QTest.mouseClick(window.play_button, Qt.MouseButton.LeftButton)
         self.assertEqual(self.model.state, TimerState.RUNNING)
         removed = []
-        window.remove_requested.connect(lambda: removed.append(True))
-        QTest.mouseClick(window.remove_button, Qt.MouseButton.LeftButton)
+        window.dismiss_requested.connect(lambda: removed.append(True))
+        QTest.mouseClick(window.close_button, Qt.MouseButton.LeftButton)
         self.assertEqual(removed, [True])
         self.assertFalse(window.is_dragging)
 
@@ -120,15 +120,19 @@ class FloatingInteractionTests(unittest.TestCase):
         self.assertEqual(flags & Qt.WindowType.WindowType_Mask, expected_type)
         self.assertFalse(self.window.testAttribute(Qt.WidgetAttribute.WA_QuitOnClose))
         self.window.resize(500, 500)
-        self.assertEqual((self.window.width(), self.window.height()), (200, 60))
+        self.assertEqual((self.window.width(), self.window.height()), (270, 80))
 
-    def test_hover_surface_matches_export_without_resizing_hit_area(self) -> None:
-        self.window._is_hovered = True
-        self.window._update_visual_state()
-        image = self.window.grab().toImage()
-        self.assertEqual(image.pixelColor(0, 0).name(), "#1a1a1a")
-        self.assertAlmostEqual(image.pixelColor(0, 57).alphaF(), 0.7, delta=1 / 255)
-        self.assertEqual(image.pixelColor(0, 59).alpha(), 0)
+    def test_v2_surface_opacity_and_rounded_edges(self) -> None:
+        for hovered, opacity in ((False, 0.7), (True, 1.0)):
+            self.window._is_hovered = hovered
+            self.window._update_visual_state()
+            image = self.window.grab().toImage()
+            self.assertEqual(image.pixelColor(0, 0).alpha(), 0)
+            self.assertEqual(image.pixelColor(10, 10).name(), "#282a36")
+            self.assertAlmostEqual(self.window.windowOpacity(), opacity, delta=1 / 255)
+        self.window._is_hovered = False
+        self.window.set_transparent_background(False)
+        self.assertEqual(self.window.windowOpacity(), 1.0)
 
     def open_controls(self) -> None:
         self.window.show()
@@ -144,9 +148,9 @@ class FloatingInteractionTests(unittest.TestCase):
         QTest.qWait(180)
         self.assertFalse(self.window.controls_open)
         self.assertEqual(self.window.visual_state, VisualState.DEFAULT)
-        self.assertEqual(self.window.size().toTuple(), (200, 60))
+        self.assertEqual(self.window.size().toTuple(), (270, 80))
         self.assertFalse(self.window.pause_button.isVisible())
-        self.assertFalse(self.window.remove_button.isVisible())
+        self.assertFalse(self.window.play_button.isVisible())
         self.assertEqual(self.model.state, TimerState.RUNNING)
 
     def test_button_and_shortcut_presses_restart_inactivity(self) -> None:
@@ -279,10 +283,38 @@ class SetterIntegrationTests(unittest.TestCase):
     def test_design_dimensions_and_card_positions(self) -> None:
         self.assertEqual((self.window.width(), self.window.height()), (500, 500))
         for item, expected in zip(self.window.timer_items.values(),
-                                  (QPoint(37, 50), QPoint(247, 50), QPoint(37, 120)), strict=True):
+                                  (QPoint(45, 76), QPoint(255, 76), QPoint(45, 136)), strict=True):
             self.assertEqual(item.card.mapTo(self.window, QPoint()), expected)
             self.assertEqual((item.card.width(), item.card.height()), (200, 50))
             self.assertEqual(item.display_text.text(), "00:05:00")
+
+    def test_toolbar_and_close_reset_recreate(self) -> None:
+        from shiboken6 import isValid
+        self.assertFalse(self.window.stopwatch_tab.isEnabled())
+        QTest.mouseClick(self.window.edit_button, Qt.MouseButton.LeftButton)
+        self.assertTrue(all(item._edit_mode for item in self.window.timer_items.values()))
+        QTest.mouseClick(self.window.add_button, Qt.MouseButton.LeftButton)
+        self.assertIn(None, self.window.parameter_windows)
+        self.window.parameter_windows[None].reject()
+        self.window.show_timer("test-0")
+        self.window.show_timer("test-1")
+        floating = self.window.floating_windows["test-0"]
+        model = floating.model
+        records = self.store.path.read_bytes()
+        QTest.mouseClick(floating.close_button, Qt.MouseButton.LeftButton)
+        self.assertNotIn("test-0", self.window.floating_windows)
+        self.assertEqual(model.state, TimerState.IDLE)
+        self.assertEqual(model.display_seconds, 300)
+        self.assertEqual(self.window.timer_items["test-0"].display_text.text(), "00:05:00")
+        self.assertEqual(self.store.path.read_bytes(), records)
+        self.assertEqual(self.window.timers["test-1"].model.state, TimerState.RUNNING)
+        APP.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        self.assertFalse(isValid(floating))
+        self.window.show_timer("test-0")
+        replacement = self.window.floating_windows["test-0"]
+        self.assertIsNot(replacement, floating)
+        self.assertIs(replacement.model, model)
+        self.assertEqual(model.state, TimerState.RUNNING)
 
     def test_start_shares_model_and_reopening_reuses_window(self) -> None:
         timer_id = next(iter(self.window.timers))
@@ -411,7 +443,9 @@ class SetterIntegrationTests(unittest.TestCase):
             reopened.close()
             reopened.deleteLater()
         self.save_settings(stay_on_top=True, transparent=True)
-        self.assertAlmostEqual(floating.grab().toImage().pixelColor(5, 5).alphaF(), 0.7, delta=1 / 255)
+        floating._is_hovered = False
+        floating._update_visual_state()
+        self.assertAlmostEqual(floating.windowOpacity(), 0.7, delta=1 / 255)
 
     def test_settings_closes_with_owner_without_saving_draft(self) -> None:
         self.window._show_settings()
@@ -522,10 +556,10 @@ class SetterIntegrationTests(unittest.TestCase):
             self.assertFalse(dialog.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground))
             self.assertFalse(dialog.windowFlags() & Qt.WindowType.FramelessWindowHint)
             self.assertTrue(dialog.windowFlags() & Qt.WindowType.WindowCloseButtonHint)
-            self.assertEqual((dialog.width(), dialog.height()), (500, 300))
+            self.assertEqual((dialog.width(), dialog.height()), (400, 300))
             image = dialog.grab().toImage()
-            for x, y in ((0, 0), (499, 0), (0, 299), (499, 299)):
-                self.assertEqual(image.pixelColor(x, y).name(), "#2a2d34")
+            for x, y in ((0, 0), (399, 0), (0, 299), (399, 299)):
+                self.assertEqual(image.pixelColor(x, y).name(), "#282a36")
                 self.assertEqual(image.pixelColor(x, y).alpha(), 255)
         finally:
             dialog.close()

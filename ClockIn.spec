@@ -13,7 +13,7 @@ a = Analysis(
     [str(root / "app.py")],
     pathex=[str(root)],
     binaries=[],
-    datas=[(str(root / folder), folder) for folder in ("assets", "styles", "defaults")],
+    datas=[(str(root / folder), folder) for folder in ("assets", "themes", "defaults")],
     hiddenimports=[],
     hookspath=[],
     runtime_hooks=[],

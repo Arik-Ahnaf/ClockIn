@@ -9,8 +9,8 @@ from PySide6.QtWidgets import QApplication, QMenu, QWidget
 from controllers import TimerController
 from models import TimerState
 from utils.design import (
-    BACKGROUND, EXPANDED_SIZE, FLOAT_HOVER_SIZE, FLOAT_SIZE, FLOAT_TEXT,
-    MENU_STYLE, MUTED, SURFACE, font, time_text,
+    BACKGROUND, EXPANDED_SIZE, FLOAT_SIZE, FLOAT_TEXT,
+    MENU_STYLE, OBJECTIVE, OBJECTIVE_COLOR, font, time_text,
 )
 from widgets.asset_button import AssetButton
 
@@ -26,6 +26,7 @@ class FloatingTimerWindow(QWidget):
 
     remove_requested = Signal()
     closed = Signal()
+    dismiss_requested = Signal()
 
     def __init__(self, controller: TimerController) -> None:
         # X11 window managers can hide all utility windows when the main window
@@ -59,19 +60,18 @@ class FloatingTimerWindow(QWidget):
         self._rollback_timer.setInterval(self.ROLLBACK_INTERVAL_MS)
         self._rollback_timer.timeout.connect(self._rollback_to_idle)
 
-        self.pause_button = AssetButton(
-            "pause.png", "Pause timer", 50, self,
-            circle=BACKGROUND, artwork_size=(26, 25),
+        self.play_button = AssetButton("v2-play.svg", "Start / resume timer", 36, self)
+        self.play_button.move(109, 76)
+        self.play_button.clicked.connect(controller.start)
+        self.pause_button = AssetButton("v2-pause.svg", "Pause timer", 36, self)
+        self.pause_button.move(155, 76)
+        self.pause_button.clicked.connect(controller.pause)
+        self.close_button = AssetButton(
+            "v2-close-first.svg", "Close and reset timer", 24, self,
+            artwork_size=(15, 15), overlay_asset="v2-close-second.svg",
         )
-        self.pause_button.move(65, 68)
-        self.pause_button.clicked.connect(controller.toggle)
-        self.remove_button = AssetButton(
-            "trash.png", "Delete timer", 50, self,
-            circle=BACKGROUND, artwork_size=(25, 25),
-        )
-        self.remove_button.move(155, 68)
-        self.remove_button.clicked.connect(self.remove_requested)
-        for widget in (self, self.pause_button, self.remove_button):
+        self.close_button.clicked.connect(self.dismiss_requested)
+        for widget in (self, self.play_button, self.pause_button, self.close_button):
             widget.installEventFilter(self)
         self.model.changed.connect(self._sync_model)
         QShortcut(QKeySequence("Space"), self, activated=controller.toggle)
@@ -90,7 +90,7 @@ class FloatingTimerWindow(QWidget):
 
     def set_transparent_background(self, enabled: bool) -> None:
         self._transparent_background = enabled
-        self.update()
+        self._update_visual_state()
 
     def set_stay_on_top(self, enabled: bool) -> None:
         flag = Qt.WindowType.WindowStaysOnTopHint
@@ -115,9 +115,6 @@ class FloatingTimerWindow(QWidget):
 
     def _sync_model(self) -> None:
         self.display_text = time_text(self.model.display_seconds, compact=True)
-        running = self.model.state is TimerState.RUNNING
-        self.pause_button.set_asset("pause.png" if running else "play.png")
-        self.pause_button.set_label("Pause timer" if running else "Start / resume timer")
         self.setAccessibleName(f"Timer {self.display_text}, {self.model.state.name.lower()}")
         self.update()
 
@@ -130,11 +127,12 @@ class FloatingTimerWindow(QWidget):
         else:
             self.visual_state = VisualState.DEFAULT
         self._expanded = self._is_dragging or self._controls_open
-        # The hover export has a 58px painted surface. Retaining the 60px hit
-        # area avoids enter/leave oscillation in its two transparent bottom rows.
         self.setFixedSize(*(EXPANDED_SIZE if self._expanded else FLOAT_SIZE))
         self.pause_button.setVisible(self._expanded)
-        self.remove_button.setVisible(self._expanded)
+        self.play_button.setVisible(self._expanded)
+        self.close_button.move(self.width() - 28, 6 if self.visual_state is VisualState.HOVER and not self._expanded else 4)
+        minimized = not self._expanded and self.visual_state is VisualState.DEFAULT
+        self.setWindowOpacity(0.7 if minimized and self._transparent_background else 1.0)
         self.setCursor(Qt.CursorShape.ClosedHandCursor if self._is_dragging
                        else Qt.CursorShape.OpenHandCursor)
         self._update_rollback_timer()
@@ -147,7 +145,7 @@ class FloatingTimerWindow(QWidget):
             self._rollback_timer.start()
 
     def _rollback_to_idle(self) -> None:
-        if self._is_dragging or self.pause_button.isDown() or self.remove_button.isDown():
+        if self._is_dragging or self.pause_button.isDown() or self.play_button.isDown() or self.close_button.isDown():
             self._update_rollback_timer(restart=True)
             return
         self._controls_open = False
@@ -274,14 +272,12 @@ class FloatingTimerWindow(QWidget):
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        surface = self.rect()
-        if not self._expanded and self.visual_state is VisualState.HOVER:
-            surface.setHeight(FLOAT_HOVER_SIZE[1])
-        background = QColor(SURFACE)
-        background.setAlphaF(0.7 if self._transparent_background else 1.0)
-        painter.fillRect(surface, background)
-        active = self._expanded or self.visual_state is not VisualState.DEFAULT
-        painter.setPen(QColor(FLOAT_TEXT if active else MUTED))
-        painter.setFont(font(48 if self._expanded else 40, True, family="Noto Sans"))
-        text_rect = QRectF(0, 9, 270, 56) if self._expanded else QRectF(0, 0, 200, 60)
-        painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, self.display_text)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(BACKGROUND))
+        painter.drawRoundedRect(QRectF(self.rect()), 8, 8)
+        painter.setPen(QColor(FLOAT_TEXT))
+        painter.setFont(font(40, True, family="IBM Plex Sans Condensed"))
+        painter.drawText(QRectF(0, 0, self.width(), 52), Qt.AlignmentFlag.AlignCenter, self.display_text)
+        painter.setPen(QColor(OBJECTIVE_COLOR))
+        painter.setFont(font(14, True, family="IBM Plex Sans Condensed"))
+        painter.drawText(QRectF(0, 52, self.width(), 18), Qt.AlignmentFlag.AlignCenter, OBJECTIVE)

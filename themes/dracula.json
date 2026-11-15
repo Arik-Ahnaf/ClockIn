@@ -1,0 +1,14 @@
+{
+  "Dracula": {
+    "bg-color": "#282A36",
+    "primary-color": "#BD93F9",
+    "secondary-color": "#E9A3E1",
+    "neutral-color": "#6272A4",
+    "fg-color": "#EDEDDE",
+    "error-color": "#FF5555",
+    "success-color": "#8EFF55",
+    "hover-color": "#FFFFFF",
+    "accent-color": "#FFF08D",
+    "off-white": "#D6C2D6"
+  }
+}

@@ -29,7 +29,3 @@ def user_data_directory() -> Path:
     if not directory:
         raise OSError("Cannot find the writable application data directory.")
     return Path(directory) / "ClockIn"
-
-
-def stylesheet(name: str) -> str:
-    return resource_path(f"styles/{name}.qss").read_text(encoding="utf-8")
