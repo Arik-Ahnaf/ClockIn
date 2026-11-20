@@ -39,7 +39,7 @@ def mouse(window, kind: QEvent.Type, position: QPoint, *, held: bool = False) ->
 
 class FloatingInteractionTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.model = TimerModel(18605)
+        self.model = TimerModel(18605, objective="Test objective")
         self.controller = TimerController(self.model)
         self.window = FloatingTimerWindow(self.controller)
         self.window.move(300, 200)
@@ -567,9 +567,8 @@ class SetterIntegrationTests(unittest.TestCase):
         self.assertEqual(self.store.load()[-1].objective, "")
         after = floating.grab().toImage()
         self.assertNotEqual(before.copy(0, 52, 270, 18), after.copy(0, 52, 270, 18))
-        for x in range(10, 260):
-            for y in range(52, 70):
-                self.assertEqual(after.pixelColor(x, y).name(), "#282a36")
+        # Clearing the objective also moves the digits into the window center.
+        self.assertEqual(before.copy(70, 0, 130, 52), after.copy(35, 4, 130, 52))
 
     def test_dialog_rejects_zero_and_returns_exact_duration(self) -> None:
         dialog = TimerDialog(0, self.window)

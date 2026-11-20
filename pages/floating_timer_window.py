@@ -119,7 +119,7 @@ class FloatingTimerWindow(QWidget):
         self.play_button.set_label("Pause timer" if running else "Start / resume timer")
         self.display_text = time_text(self.model.display_seconds, compact=True)
         self.setAccessibleName(f"Timer {self.display_text}, {self.model.state.name.lower()}")
-        self.update()
+        self._update_visual_state()
 
     def _update_visual_state(self) -> None:
         """The only place that resolves appearance, geometry, and cursors."""
@@ -130,10 +130,20 @@ class FloatingTimerWindow(QWidget):
         else:
             self.visual_state = VisualState.DEFAULT
         self._expanded = self._is_dragging or self._controls_open
-        self.setFixedSize(*(EXPANDED_SIZE if self._expanded else FLOAT_SIZE))
+        if not self.model.objective:
+            self.setFixedSize(*((240, 100) if self._expanded else (200, 60)))
+            self.play_button.move(79, 56)
+            self.reset_button.move(125, 56)
+            self.close_button.setFixedSize(15, 15)
+            self.close_button.move(self.width() - 20, 6)
+        else:
+            self.setFixedSize(*(EXPANDED_SIZE if self._expanded else FLOAT_SIZE))
+            self.play_button.move(109, 76)
+            self.reset_button.move(155, 76)
+            self.close_button.setFixedSize(24, 24)
+            self.close_button.move(self.width() - 28, 6 if self.visual_state is VisualState.HOVER and not self._expanded else 4)
         self.reset_button.setVisible(self._expanded)
         self.play_button.setVisible(self._expanded)
-        self.close_button.move(self.width() - 28, 6 if self.visual_state is VisualState.HOVER and not self._expanded else 4)
         minimized = not self._expanded and self.visual_state is VisualState.DEFAULT
         self.setWindowOpacity(0.7 if minimized and self._transparent_background else 1.0)
         self.setCursor(Qt.CursorShape.ClosedHandCursor if self._is_dragging
@@ -280,7 +290,8 @@ class FloatingTimerWindow(QWidget):
         painter.drawRoundedRect(QRectF(self.rect()), 8, 8)
         painter.setPen(QColor(FLOAT_TEXT))
         painter.setFont(font(40, True, family="IBM Plex Sans Condensed"))
-        painter.drawText(QRectF(0, 0, self.width(), 52), Qt.AlignmentFlag.AlignCenter, self.display_text)
+        digits_rect = QRectF(0, 0 if self.model.objective else 4, self.width(), 52)
+        painter.drawText(digits_rect, Qt.AlignmentFlag.AlignCenter, self.display_text)
         if self.model.objective:
             painter.setPen(QColor(OBJECTIVE_COLOR))
             painter.setFont(font(14, True, family="IBM Plex Sans Condensed"))
