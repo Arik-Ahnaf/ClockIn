@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
 )
 
 from controllers import TimerController
-from models import TimerModel
+from models import StopwatchModel, TimerModel, TimerState
 from utils.alarm import AlarmService
 from utils.design import ACCENT, BACKGROUND, SETTER_SIZE, SURFACE, TEXT, font
 from utils.timer_store import TimerRecord, TimerStore, TimerStoreError
@@ -19,6 +19,8 @@ from widgets.timer_item import TimerItem
 from pages.floating_timer_window import FloatingTimerWindow
 from pages.timer_dialog import TimerDialog
 from pages.settings_window import SettingsWindow
+from pages.stopwatch_page import StopwatchPage
+from pages.floating_stopwatch_window import FloatingStopwatchWindow
 
 
 class SetterWindow(QWidget):
@@ -57,6 +59,12 @@ class SetterWindow(QWidget):
         self.timer_content = QWidget()
         self.timer_content.setFixedSize(500, 434)
         self.scroll_area.setWidget(self.timer_content)
+        self.stopwatch_controller = TimerController(StopwatchModel(self), self)
+        self.stopwatch_page = StopwatchPage(self.stopwatch_controller, self)
+        self.stopwatch_page.hide()
+        self.stopwatch_window: FloatingStopwatchWindow | None = None
+        self._stopwatch_state = self.stopwatch_controller.model.state
+        self.stopwatch_controller.model.changed.connect(self._sync_stopwatch_window)
 
         new_action = QAction("New timer", self)
         new_action.setShortcut(QKeySequence.StandardKey.New)
@@ -68,9 +76,10 @@ class SetterWindow(QWidget):
         views.setStyleSheet(f"background: {SURFACE}; border-radius: 8px;")
         self.timer_tab = AssetButton("fa-clock.svg", "Timers", (24, 24), views)
         self.timer_tab.move(12, 6)
-        self.stopwatch_tab = AssetButton("fa-stopwatch.svg", "Stopwatch — coming later", (21, 25), views)
+        self.stopwatch_tab = AssetButton("fa-stopwatch.svg", "Stopwatch", (21, 25), views)
         self.stopwatch_tab.move(56, 6)
-        self.stopwatch_tab.setEnabled(False)
+        self.stopwatch_tab.clicked.connect(lambda: self._show_stopwatch(True))
+        self.timer_tab.clicked.connect(lambda: self._show_stopwatch(False))
         self.button_section = QFrame(self)
         self.button_section.setGeometry(258, 20, 91, 36)
         self.button_section.setStyleSheet(f"background: {SURFACE}; border-radius: 8px;")
@@ -86,6 +95,40 @@ class SetterWindow(QWidget):
         self.settings_button.clicked.connect(self._show_settings)
         for record in saved_timers:
             self._create_timer(record)
+
+    def _sync_stopwatch_window(self) -> None:
+        state = self.stopwatch_controller.model.state
+        previous = self._stopwatch_state
+        self._stopwatch_state = state
+        if state is TimerState.RUNNING and previous is not TimerState.RUNNING:
+            if self.stopwatch_window is None:
+                window = FloatingStopwatchWindow(self.stopwatch_controller)
+                self.stopwatch_window = window
+                self.destroyed.connect(window.deleteLater)
+                window.dismiss_requested.connect(self._dismiss_stopwatch)
+                window.set_transparent_background(self.transparent_background)
+                window.set_stay_on_top(self.timers_stay_on_top)
+                position = self.frameGeometry().topRight() + QPoint(14, 40)
+                screen = self.screen()
+                if screen is not None:
+                    available = screen.availableGeometry()
+                    position.setX(max(available.left(), min(position.x(), available.right() - window.width() + 1)))
+                    position.setY(max(available.top(), min(position.y(), available.bottom() - window.height() + 1)))
+                window.move(position)
+            self.stopwatch_window.restore()
+
+    def _dismiss_stopwatch(self) -> None:
+        self.stopwatch_controller.reset()
+        if self.stopwatch_window is not None:
+            self.stopwatch_window.close()
+
+    def _show_stopwatch(self, visible: bool) -> None:
+        self.scroll_area.setVisible(not visible)
+        self.stopwatch_page.setVisible(visible)
+        self.timer_tab.set_asset("timer-tab-inactive.svg" if visible else "fa-clock.svg")
+        self.stopwatch_tab.set_asset("stopwatch-tab-active.svg" if visible else "fa-stopwatch.svg")
+        if visible:
+            self.stopwatch_page.setFocus()
 
     def add_timer(self, duration: int = 300, objective: str = "") -> TimerController:
         record = TimerRecord(uuid4().hex, duration, TimerModel.validate_objective(objective))
@@ -186,6 +229,7 @@ class SetterWindow(QWidget):
         self._show_parameter_window(timer_id, controller.model.duration_seconds)
 
     def _new_timer(self) -> None:
+        self._show_stopwatch(False)
         self._show_parameter_window(None, 300)
 
     def _show_parameter_window(self, timer_id: str | None, duration: int) -> None:
@@ -220,6 +264,7 @@ class SetterWindow(QWidget):
             dialog.deleteLater()
 
     def _set_edit_mode(self, enabled: bool) -> None:
+        self._show_stopwatch(False)
         self.edit_mode = enabled
         self.edit_button.set_label("Finish editing" if enabled else "Edit timers")
         for item in self.timer_items.values():
@@ -244,18 +289,24 @@ class SetterWindow(QWidget):
         dialog.deleteLater()
 
     def _hide_floating_timers(self) -> None:
+        if self.stopwatch_window is not None:
+            self.stopwatch_window.close()
         for window in self.floating_windows.values():
             window.close()
 
     def _set_timers_stay_on_top(self, enabled: bool) -> None:
         self.timers_stay_on_top = enabled
         self.settings.setValue("timers_stay_on_top", enabled)
+        if self.stopwatch_window is not None:
+            self.stopwatch_window.set_stay_on_top(enabled)
         for window in self.floating_windows.values():
             window.set_stay_on_top(enabled)
 
     def _set_transparent_background(self, enabled: bool) -> None:
         self.transparent_background = enabled
         self.settings.setValue("transparent_background", enabled)
+        if self.stopwatch_window is not None:
+            self.stopwatch_window.set_transparent_background(enabled)
         for window in self.floating_windows.values():
             window.set_transparent_background(enabled)
 
@@ -282,6 +333,7 @@ class SetterWindow(QWidget):
         message.deleteLater()
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        self.stopwatch_controller.pause()
         if self.settings_window is not None:
             self.settings_window.reject()
         for dialog in list(self.parameter_windows.values()):

@@ -1,6 +1,7 @@
 from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import QAbstractButton, QWidget
+from PySide6.QtSvg import QSvgRenderer
 
 from utils.design import ASSETS, TEXT
 
@@ -33,6 +34,14 @@ class AssetButton(QAbstractButton):
         self._pixmap = QPixmap(str(ASSETS / asset))
         if self._pixmap.isNull():
             raise ValueError(f"Missing or invalid icon: {ASSETS / asset}")
+        if asset.endswith(".svg") and (self.width() > self._pixmap.width()
+                                      or self.height() > self._pixmap.height()):
+            renderer = QSvgRenderer(str(ASSETS / asset))
+            self._pixmap = QPixmap(self.size())
+            self._pixmap.fill(Qt.GlobalColor.transparent)
+            painter = QPainter(self._pixmap)
+            renderer.render(painter)
+            painter.end()
         # Some exported icons include their colored backing circle. Preserve
         # that artwork while applying the same 10% brightness rule on hover.
         hover_image = self._pixmap.toImage()

@@ -297,7 +297,7 @@ class SetterIntegrationTests(unittest.TestCase):
 
     def test_toolbar_and_close_reset_recreate(self) -> None:
         from shiboken6 import isValid
-        self.assertFalse(self.window.stopwatch_tab.isEnabled())
+        self.assertTrue(self.window.stopwatch_tab.isEnabled())
         QTest.mouseClick(self.window.edit_button, Qt.MouseButton.LeftButton)
         self.assertTrue(all(item._edit_mode for item in self.window.timer_items.values()))
         QTest.mouseClick(self.window.add_button, Qt.MouseButton.LeftButton)

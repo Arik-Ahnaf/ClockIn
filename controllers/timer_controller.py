@@ -2,11 +2,11 @@
 
 from PySide6.QtCore import QObject, Qt, QTimer, Slot
 
-from models import TimerModel, TimerState
+from models import StopwatchModel, TimerModel, TimerState
 
 
 class TimerController(QObject):
-    def __init__(self, model: TimerModel, parent: QObject | None = None) -> None:
+    def __init__(self, model: TimerModel | StopwatchModel, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self.model = model
         self._refresh_timer = QTimer(self)

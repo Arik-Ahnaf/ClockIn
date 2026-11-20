@@ -130,6 +130,17 @@ class FloatingTimerWindow(QWidget):
         else:
             self.visual_state = VisualState.DEFAULT
         self._expanded = self._is_dragging or self._controls_open
+        self._apply_layout()
+        self.reset_button.setVisible(self._expanded)
+        self.play_button.setVisible(self._expanded)
+        minimized = not self._expanded and self.visual_state is VisualState.DEFAULT
+        self.setWindowOpacity(0.7 if minimized and self._transparent_background else 1.0)
+        self.setCursor(Qt.CursorShape.ClosedHandCursor if self._is_dragging
+                       else Qt.CursorShape.OpenHandCursor)
+        self._update_rollback_timer()
+        self.update()
+
+    def _apply_layout(self) -> None:
         if not self.model.objective:
             self.setFixedSize(*((240, 100) if self._expanded else (200, 60)))
             self.play_button.move(79, 56)
@@ -142,14 +153,6 @@ class FloatingTimerWindow(QWidget):
             self.reset_button.move(155, 76)
             self.close_button.setFixedSize(24, 24)
             self.close_button.move(self.width() - 28, 6 if self.visual_state is VisualState.HOVER and not self._expanded else 4)
-        self.reset_button.setVisible(self._expanded)
-        self.play_button.setVisible(self._expanded)
-        minimized = not self._expanded and self.visual_state is VisualState.DEFAULT
-        self.setWindowOpacity(0.7 if minimized and self._transparent_background else 1.0)
-        self.setCursor(Qt.CursorShape.ClosedHandCursor if self._is_dragging
-                       else Qt.CursorShape.OpenHandCursor)
-        self._update_rollback_timer()
-        self.update()
 
     def _update_rollback_timer(self, *, restart: bool = False) -> None:
         if not self.isVisible() or not self._controls_open or self._is_dragging:

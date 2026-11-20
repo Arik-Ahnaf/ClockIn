@@ -10,7 +10,7 @@ Qt logical pixels without manual device-pixel-ratio multiplication.
 | Asset | Figma source / use | Logical size |
 | --- | --- | --- |
 | `fa-clock.svg` | Setter timer tab, 155:23 | 24×24 |
-| `fa-stopwatch.svg` | Deferred stopwatch tab | 21×25 |
+| `fa-stopwatch.svg` | Inactive stopwatch tab | 21×25 |
 | `fa-cog.svg` | Setter settings, 152:2651 | 23×24 |
 | `play-btn.svg` | Timer card play control, 91:25 | 24×24 |
 | `setter-edit.svg` | Toolbar pencil, 165:27 | 23×24 |
@@ -41,3 +41,17 @@ Controls use local SVG artwork. The remaining PNG checkmark is used by settings 
 Resources are resolved relative to the application directory through
 `utils.paths.resource_path`; `packaging/resources.json` inventories the shipped
 files. No runtime Figma URLs are used.
+
+Stopwatch Page (`179:36`): `stopwatch-play.svg` (`191:17`) and
+`stopwatch-pause.svg` (`191:19`) are 86×86 exports. The active stopwatch tab
+(`179:43`) and inactive timer tab (`179:42`) are separate local exports.
+Elapsed time uses IBM Plex Sans SemiBold, 96px, weight axis 600.
+
+Stopwatch Widget (`213:68`, inspected November 20, 2026): idle/hover are
+200×60; expanded/dragging is 220×100. The 40px IBM Plex Sans Condensed Bold
+elapsed display uses hours:minutes:seconds. Idle opacity is 70%; hover and
+expanded are opaque. The existing 36×36 `v2-play.svg` and `reset-btn.svg`
+render identically to exports `213:74` and `213:75`; `stopwatch-close.svg` is
+exported from `213:87`. Controls start at (69,52) and (115,52); the close
+icon is at (178,6) in idle and (196,8) when expanded, and hidden in hover.
+The stray close layer above the expanded frame is outside the window bounds.

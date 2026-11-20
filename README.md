@@ -3,8 +3,6 @@
 ClockIn is a desktop timer app with floating timers that stay above your other
 windows. Keep track of multiple countdowns while you work, study, or take a break.
 
-<img width="240" height="240" alt="Logo" src="https://github.com/user-attachments/assets/55d63bc4-19d2-432c-afae-b24fea936121" />
-
 ## Features
 
 - Create multiple timers with custom hours, minutes, and seconds.
@@ -67,12 +65,94 @@ desktop libraries; the Arch package installs its required dependencies through
 pacman. Linux builds target current Arch Linux and are not guaranteed to work on
 other distributions or older systems.
 
-## Usage
+## Using ClockIn
 
-Refer to the [wiki](https://github.com/Arik-Ahnaf/ClockIn/wiki) for detailed instructions on how to use the app.
+1. Click the **Add timer** button at the bottom of the main window, or press
+   **Ctrl+N**.
+2. Set the hours, minutes, and seconds. The duration must be at least one second.
+3. Click the timer card's **play** button to start it and show its floating window.
+4. Drag the floating timer's text or background to move it. Click its surface to
+   show or hide the pause and delete controls.
+
+Click a timer card's time to change its duration; this resets that timer. To
+remove timers, use the bottom **Edit timers** button to reveal removal controls.
+You can also right-click a timer card or floating timer for more actions.
+Click **Settings** to open its separate window. Choose **Transparent Background**
+for translucent floating timers, or uncheck **Timers stay on top** to let other
+apps cover them. Click **Save** to apply both choices to existing and future
+floating timers and remember them across launches. **Exit**, **Escape**, or the
+window's close button discards unsaved changes and closes only Settings.
+
+Closing a floating window only hides it; its countdown continues. Click its
+card's play button to show it again. Closing the main ClockIn window exits the
+app and stops all countdowns.
+
+Each completed countdown plays the operating system's alarm sound once, even
+when its floating window is hidden. Windows uses the alarm sound from your
+system sound scheme (or the default system sound if no alarm is configured).
+Arch Linux uses the desktop sound theme's alarm through `libcanberra`, with
+audio classified as an alarm so muting desktop event sounds does not silence
+timers. Output-device volume and muting still apply. If playback fails, ClockIn
+tries the system bell.
+
+The Arch package installs the sound dependencies automatically. For portable
+or source installations on Arch, install them with:
+
+```sh
+sudo pacman -S libcanberra gtk3 sound-theme-freedesktop
+```
+
+### Keyboard shortcuts
+
+| Shortcut | Action |
+| --- | --- |
+| **Ctrl+N** in the main window | Create a timer |
+| **Space** in a floating timer | Pause or resume |
+| **Delete** in a floating timer | Remove that timer |
+| **Escape** in a floating timer | Collapse its controls, or hide it if already compact |
+
+## Saved timers and updates
+
+Timer additions, duration changes, and deletions are saved automatically. On your
+next launch, saved timers start idle at their configured durations. Running
+countdowns and floating-window positions are not restored.
+
+Your timer data is stored separately from the installed app:
+
+| Operating system | Timer data |
+| --- | --- |
+| Windows | `%LOCALAPPDATA%\ClockIn\timers.json` |
+| Linux | `~/.local/share/ClockIn/timers.json`, or `$XDG_DATA_HOME/ClockIn/timers.json` if configured |
+
+To back up your timers, close ClockIn and copy this file to a safe location.
+
+To update a portable installation, close ClockIn, download the new release, and
+extract it into a new folder. Launch the new copy; your saved timers remain in
+the same data location. On Arch Linux, install the newer package with
+`sudo pacman -U` as above.
 
 ## Help and feedback
 
 Report bugs or request features on the
 [issue tracker](https://github.com/Arik-Ahnaf/ClockIn/issues). For installation
 problems, include your operating system, ClockIn version, and any error message.
+
+## Building Windows
+
+On Linux, use GitHub **Actions → Build Windows → Run workflow**, then download
+the `ClockIn-windows` artifact from the successful run. The workflow builds and
+executes the app on `windows-latest`; do not use Wine or Linux PyInstaller to
+build Windows executables. Changes to the Windows workflow also trigger a build.
+
+On Windows, run `./packaging/windows/build.ps1` with `uv` installed. Both methods
+use the same `ClockIn.spec` and produce `dist/ClockIn-<version>-windows-x86_64.zip`.
+Extract the ZIP and keep the complete `ClockIn` folder, including its assets,
+styles, defaults, and runtime libraries, together.
+
+For further developer build and verification instructions, see [PACKAGING.md](PACKAGING.md).
+
+Starting or resuming the stopwatch automatically shows its floating window.
+It shares elapsed time and pause/reset controls with the Stopwatch page.
+Click its background to reveal controls, or drag anywhere outside the buttons.
+The close icon resets and hides the stopwatch; Escape or the context menu can
+hide the floating view without stopping it. Starting again reuses that window.
